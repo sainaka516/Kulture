@@ -22,6 +22,11 @@ interface Take {
     id: string
     name: string
     slug: string
+    parent?: {
+      id: string
+      name: string
+      slug: string
+    } | null
   }
   votes: {
     type: 'UP' | 'DOWN'
@@ -92,6 +97,25 @@ export default function TakeFeed({ initialTakes, communityId, communitySlug }: T
     fetchTakes()
   }
 
+  // Group takes by community
+  const groupedTakes = takes.reduce((acc, take) => {
+    const communityId = take.community.id
+    if (!acc[communityId]) {
+      acc[communityId] = []
+    }
+    acc[communityId].push(take)
+    return acc
+  }, {} as Record<string, Take[]>)
+
+  // Sort communities to show parent first, then children
+  const sortedCommunityIds = Object.keys(groupedTakes).sort((a, b) => {
+    const communityA = takes.find(t => t.community.id === a)?.community
+    const communityB = takes.find(t => t.community.id === b)?.community
+    if (communityA?.parent && !communityB?.parent) return 1
+    if (!communityA?.parent && communityB?.parent) return -1
+    return 0
+  })
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -142,10 +166,31 @@ export default function TakeFeed({ initialTakes, communityId, communitySlug }: T
       </div>
 
       {/* Takes list */}
-      <div className="space-y-4">
-        {takes.map((take) => (
-          <TakeCard key={take.id} take={take} />
-        ))}
+      <div className="space-y-6">
+        {sortedCommunityIds.map((communityId) => {
+          const communityTakes = groupedTakes[communityId]
+          const firstTake = communityTakes[0]
+          const isChildCommunity = firstTake.community.parent !== null
+
+          return (
+            <div key={communityId} className="space-y-4">
+              {isChildCommunity && communitySlug && (
+                <div className="flex items-center gap-2 px-4 py-2 bg-muted/50 rounded-lg">
+                  <h3 className="text-sm font-medium">
+                    Takes from {firstTake.community.name}
+                  </h3>
+                </div>
+              )}
+              {communityTakes.map((take) => (
+                <TakeCard 
+                  key={take.id} 
+                  take={take} 
+                  currentKultureSlug={communitySlug}
+                />
+              ))}
+            </div>
+          )
+        })}
         {takes.length === 0 && (
           <div className="rounded-lg border p-8 text-center">
             <h2 className="text-lg font-semibold">No takes yet</h2>

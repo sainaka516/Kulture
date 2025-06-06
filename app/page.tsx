@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Loader2, Flame, Clock, TrendingUp } from 'lucide-react'
-import SubkultureList from '@/components/SubkultureList'
+import KultureList from '@/components/KultureList'
 import { Suspense } from 'react'
 import TakeCard from '@/components/TakeCard'
 import TakeFeed from '@/components/TakeFeed'
@@ -61,12 +61,12 @@ export default function HomePage() {
 
     // Fetch communities
     fetch('/api/communities')
-      .then(response => response.json())
-      .then(data => {
+      .then((res) => res.json())
+      .then((data) => {
         setCommunities(data)
       })
-      .catch(error => {
-        console.error('Failed to fetch communities:', error)
+      .catch((error) => {
+        console.error('Error fetching communities:', error)
       })
       .finally(() => {
         setIsLoading(false)
@@ -105,8 +105,8 @@ export default function HomePage() {
       </div>
 
       {/* Sidebar */}
-      <div className="hidden md:block space-y-6">
-        <SubkultureList communities={communities} />
+      <div className="w-full md:w-1/4 space-y-4">
+        <KultureList communities={communities} />
       </div>
     </div>
   )

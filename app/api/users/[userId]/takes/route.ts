@@ -36,6 +36,11 @@ export async function GET(
             id: true,
             name: true,
             slug: true,
+            _count: {
+              select: {
+                members: true
+              }
+            }
           },
         },
         votes: true,

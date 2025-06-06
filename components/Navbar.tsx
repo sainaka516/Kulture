@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Search, PlusCircle } from 'lucide-react'
+import { Search, PlusCircle, Layers, Trophy } from 'lucide-react'
 import { useSession, signOut } from 'next-auth/react'
 import UserAuthStatus from '@/components/auth/UserAuthStatus'
 import { Button } from './ui/button'
@@ -43,13 +43,24 @@ export default function Navbar() {
             Home
           </Link>
           <Link
-            href="/subkultures"
+            href="/kultures"
             className={cn(
-              "text-sm font-medium transition-colors hover:text-foreground",
-              pathname === "/subkultures" ? "text-foreground" : "text-muted-foreground"
+              "flex items-center gap-2 font-medium transition-colors hover:text-foreground",
+              pathname === "/kultures" ? "text-foreground" : "text-muted-foreground"
             )}
           >
-            Subkultures
+            <Layers className="h-4 w-4" />
+            Kultures
+          </Link>
+          <Link
+            href="/leaderboard"
+            className={cn(
+              "flex items-center gap-2 font-medium transition-colors hover:text-foreground",
+              pathname === "/leaderboard" ? "text-foreground" : "text-muted-foreground"
+            )}
+          >
+            <Trophy className="h-4 w-4" />
+            Leaderboard
           </Link>
         </div>
 
@@ -99,8 +110,8 @@ export default function Navbar() {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link href="/create-subkulture">
-                    Create a Subkulture
+                  <Link href="/create-kulture">
+                    Create a Kulture
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>

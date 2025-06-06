@@ -58,7 +58,7 @@ export default function ProfilePage() {
       <h1 className="text-2xl font-bold mb-6">Your Takes</h1>
       <div className="space-y-4">
         {takes.map((take) => (
-          <TakeCard key={take.id} take={take} />
+          <TakeCard key={take.id} take={take} currentKultureSlug={null} />
         ))}
         {takes.length === 0 && (
           <p className="text-muted-foreground">You haven't shared any takes yet.</p>

@@ -32,6 +32,17 @@ export async function GET(request: Request) {
             id: true,
             name: true,
             slug: true,
+            parent: {
+              select: {
+                name: true,
+                slug: true
+              }
+            },
+            _count: {
+              select: {
+                members: true
+              }
+            }
           },
         },
         votes: true,

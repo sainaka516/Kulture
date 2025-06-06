@@ -82,7 +82,7 @@ export default function SubkulturesClient({ communities }: SubkulturesClientProp
                     href={`/k/${community.slug}`}
                     className="text-lg font-semibold hover:text-purple-900 dark:hover:text-purple-400"
                   >
-                    k/{community.name}
+                    {community.name}
                   </Link>
                   {community.parent && (
                     <div className="text-sm text-muted-foreground mt-1">
@@ -91,7 +91,7 @@ export default function SubkulturesClient({ communities }: SubkulturesClientProp
                         href={`/k/${community.parent.slug}`}
                         className="hover:text-foreground"
                       >
-                        k/{community.parent.name}
+                        {community.parent.name}
                       </Link>
                     </div>
                   )}
@@ -129,7 +129,7 @@ export default function SubkulturesClient({ communities }: SubkulturesClientProp
                         href={`/k/${child.slug}`}
                         className="text-xs text-muted-foreground hover:text-foreground"
                       >
-                        k/{child.name}
+                        {child.name}
                       </Link>
                     ))}
                   </div>

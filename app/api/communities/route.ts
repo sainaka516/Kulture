@@ -12,9 +12,24 @@ export async function GET() {
       include: {
         parent: {
           select: {
+            id: true,
             name: true,
             slug: true,
+            parent: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+              }
+            }
           },
+        },
+        children: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          }
         },
         _count: {
           select: {
@@ -26,7 +41,15 @@ export async function GET() {
       },
     })
 
-    return NextResponse.json(communities)
+    // Format the communities to show proper hierarchy
+    const formattedCommunities = communities.map(community => ({
+      ...community,
+      displayName: community.parent 
+        ? `${community.parent.name} > ${community.name}`
+        : community.name
+    }))
+
+    return NextResponse.json(formattedCommunities)
   } catch (error) {
     console.error('[COMMUNITIES_GET]', error)
     return new NextResponse('Internal Error', { status: 500 })

@@ -11,15 +11,28 @@ export async function GET(
       where: {
         slug: params.slug,
       },
+      include: {
+        children: {
+          select: {
+            id: true
+          }
+        }
+      }
     })
 
     if (!community) {
       return new NextResponse('Community not found', { status: 404 })
     }
 
+    // Get all child community IDs
+    const childIds = community.children.map(child => child.id)
+    
+    // Fetch takes from both parent and child communities
     const takes = await prisma.take.findMany({
       where: {
-        communityId: community.id,
+        communityId: {
+          in: [community.id, ...childIds]
+        }
       },
       orderBy: {
         createdAt: 'desc',
@@ -37,6 +50,24 @@ export async function GET(
             id: true,
             name: true,
             slug: true,
+            parent: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                members: true,
+                _count: {
+                  select: {
+                    members: true
+                  }
+                }
+              }
+            },
+            _count: {
+              select: {
+                members: true
+              }
+            }
           },
         },
         votes: true,

@@ -57,7 +57,7 @@ export default async function TakePage({ params }: TakePageProps) {
   return (
     <div className="container flex flex-col items-center justify-between gap-6 py-8 md:flex-row md:items-start">
       <div className="w-full md:w-3/4">
-        <TakeCard take={take} />
+        <TakeCard take={take} currentKultureSlug={null} />
         <div className="mt-6">
           <Comments takeId={take.id} initialComments={take.comments} />
         </div>

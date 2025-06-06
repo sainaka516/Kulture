@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select"
 import { useToast } from '@/hooks/use-toast'
 import { Loader2 } from 'lucide-react'
+import { Label } from '@/components/ui/label'
 
 export default function SubmitPage() {
   const router = useRouter()
@@ -111,41 +112,36 @@ export default function SubmitPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => router.push('/create-subkulture')}
+                onClick={() => router.push('/create-kulture')}
               >
-                Create a Subkulture
+                Create a Kulture
               </Button>
             </div>
           </div>
 
           <form onSubmit={onSubmit} className="space-y-4">
             <div className="space-y-2">
-              <label htmlFor="communityId" className="text-sm font-medium">
-                Choose a Subkulture
-              </label>
+              <Label htmlFor="communityId">Choose a Kulture</Label>
               <Select name="communityId" required>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select a subkulture" />
+                  <SelectValue placeholder="Select a kulture" />
                 </SelectTrigger>
                 <SelectContent>
                   {communities.length > 0 ? (
                     communities.map((community) => (
                       <SelectItem key={community.id} value={community.id}>
-                        {community.parent ? `k/${community.parent.name}/` : ''}k/{community.name}
+                        {community.parent ? `${community.parent.name} > ${community.name}` : community.name}
                       </SelectItem>
                     ))
                   ) : (
-                    <div className="p-2 text-center">
-                      <p className="text-sm text-muted-foreground mb-2">No communities found</p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => router.push('/create-subkulture')}
-                        className="w-full"
-                      >
-                        Create a Subkulture
-                      </Button>
-                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="w-full"
+                      onClick={() => router.push('/create-kulture')}
+                    >
+                      Create a Kulture
+                    </Button>
                   )}
                 </SelectContent>
               </Select>

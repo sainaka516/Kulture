@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useState } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import TakeFeed from '@/components/TakeFeed'
 import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useToast } from '@/hooks/use-toast'
 import Link from 'next/link'
-import SubkultureGrid from '@/components/SubkultureGrid'
+import KultureGrid from '@/components/KultureGrid'
 
 interface CommunityClientProps {
   community: {
@@ -73,6 +73,21 @@ export default function CommunityClient({ community }: CommunityClientProps) {
   const { data: session } = useSession()
   const { toast } = useToast()
   const [isJoining, setIsJoining] = useState(false)
+  const [isMember, setIsMember] = useState(false)
+
+  useEffect(() => {
+    if (session?.user?.id) {
+      // Check if user is already a member
+      fetch(`/api/k/${community.slug}/membership`)
+        .then((res) => res.json())
+        .then((data) => {
+          setIsMember(data.isMember)
+        })
+        .catch((error) => {
+          console.error('Error checking membership:', error)
+        })
+    }
+  }, [session?.user?.id, community.slug])
 
   function joinCommunity() {
     if (!session) {
@@ -81,18 +96,56 @@ export default function CommunityClient({ community }: CommunityClientProps) {
     }
 
     setIsJoining(true)
-    fetch(`/api/communities/${community.id}/join`, {
+    fetch(`/api/k/${community.slug}/join`, {
       method: 'POST',
     })
       .then((response) => {
         if (!response.ok) {
           throw new Error('Failed to join community')
         }
+        return response.json()
+      })
+      .then(() => {
         toast({
           title: 'Success',
-          description: `You have joined k/${community.name}`,
+          description: `You have joined ${community.name}`,
         })
-        router.refresh()
+        setIsMember(true)
+      })
+      .catch((error) => {
+        toast({
+          title: 'Error',
+          description: 'Something went wrong. Please try again.',
+          variant: 'destructive',
+        })
+      })
+      .finally(() => {
+        setIsJoining(false)
+      })
+  }
+
+  function leaveCommunity() {
+    if (!session) {
+      router.push('/sign-in')
+      return
+    }
+
+    setIsJoining(true)
+    fetch(`/api/k/${community.slug}/leave`, {
+      method: 'POST',
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error('Failed to leave community')
+        }
+        return response.json()
+      })
+      .then(() => {
+        toast({
+          title: 'Success',
+          description: `You have left ${community.name}`,
+        })
+        setIsMember(false)
       })
       .catch((error) => {
         toast({
@@ -114,14 +167,14 @@ export default function CommunityClient({ community }: CommunityClientProps) {
             <div className="flex items-center gap-2 mb-1">
               <Link
                 href={`/k/${community.parent.slug}`}
-                className="text-sm text-muted-foreground hover:text-foreground"
+                className="text-sm text-muted-foreground hover:text-foreground flex items-center"
               >
-                k/{community.parent.name}
+                {community.parent.name}
+                <span className="mx-2 text-muted-foreground">></span>
               </Link>
-              <span className="text-sm text-muted-foreground">/</span>
             </div>
           ) : null}
-          <h1 className="text-2xl font-bold">k/{community.name}</h1>
+          <h1 className="text-2xl font-bold">{community.name}</h1>
           {community.description && (
             <p className="text-muted-foreground mt-1">{community.description}</p>
           )}
@@ -130,7 +183,7 @@ export default function CommunityClient({ community }: CommunityClientProps) {
       </div>
 
       {community.children.length > 0 && (
-        <SubkultureGrid subkultures={community.children} />
+        <KultureGrid kultures={community.children} />
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -152,7 +205,7 @@ export default function CommunityClient({ community }: CommunityClientProps) {
 
         <div className="space-y-4">
           <div className="rounded-lg border p-4">
-            <h2 className="font-semibold mb-4">About k/{community.name}</h2>
+            <h2 className="font-semibold mb-4">About {community.name}</h2>
             <dl className="space-y-4">
               <div>
                 <dt className="text-muted-foreground">Created by</dt>
@@ -168,14 +221,26 @@ export default function CommunityClient({ community }: CommunityClientProps) {
               </div>
               {community._count.children > 0 && (
                 <div>
-                  <dt className="text-muted-foreground">Subkultures</dt>
+                  <dt className="text-muted-foreground">Associated Kultures</dt>
                   <dd className="font-medium">{community._count.children}</dd>
                 </div>
               )}
             </dl>
             <div className="mt-4">
-              <Button onClick={joinCommunity} className="w-full" disabled={isJoining}>
-                {isJoining ? 'Joining...' : 'Join Community'}
+              <Button 
+                onClick={isMember ? leaveCommunity : joinCommunity} 
+                className="w-full" 
+                disabled={isJoining}
+                variant={isMember ? "outline" : "default"}
+              >
+                {isJoining ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {isMember ? 'Leaving...' : 'Joining...'}
+                  </>
+                ) : (
+                  isMember ? 'Leave Kulture' : 'Join Kulture'
+                )}
               </Button>
             </div>
           </div>

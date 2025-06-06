@@ -30,7 +30,15 @@ export default function CommunityCard({ community }: CommunityCardProps) {
               href={`/k/${community.slug}`}
               className="text-lg font-semibold hover:text-purple-900 dark:hover:text-purple-400"
             >
-              k/{community.name}
+              {community.parent ? (
+                <span className="flex items-center gap-1">
+                  <span className="text-muted-foreground">{community.parent.name}</span>
+                  <span className="text-muted-foreground mx-1">></span>
+                  <span>{community.name}</span>
+                </span>
+              ) : (
+                community.name
+              )}
             </Link>
             {community.parent && (
               <div className="text-sm text-muted-foreground mt-1">
@@ -39,7 +47,7 @@ export default function CommunityCard({ community }: CommunityCardProps) {
                   href={`/k/${community.parent.slug}`}
                   className="hover:text-foreground"
                 >
-                  k/{community.parent.name}
+                  {community.parent.name}
                 </Link>
               </div>
             )}
