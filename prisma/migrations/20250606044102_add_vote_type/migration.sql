@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Vote" ADD COLUMN     "type" TEXT NOT NULL DEFAULT 'UP';
