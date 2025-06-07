@@ -2,9 +2,10 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Search, PlusCircle, Layers, Trophy } from 'lucide-react'
+import { PlusCircle, Layers, Trophy } from 'lucide-react'
 import { useSession, signOut } from 'next-auth/react'
 import UserAuthStatus from '@/components/auth/UserAuthStatus'
+import { SearchBar } from '@/components/SearchBar'
 import { Button } from './ui/button'
 import {
   DropdownMenu,
@@ -66,14 +67,7 @@ export default function Navbar() {
 
         {/* Search */}
         <div className="flex-1 max-w-xl px-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
-              type="search"
-              placeholder="Search Kulture"
-              className="w-full pl-10 pr-4 py-1.5 rounded-full bg-muted dark:bg-black dark:border dark:border-border focus:outline-none focus:ring-2 focus:ring-purple-900 dark:focus:ring-purple-400 focus:bg-background dark:focus:bg-black"
-            />
-          </div>
+          <SearchBar />
         </div>
 
         {/* Actions */}

@@ -64,14 +64,52 @@ export async function GET(request: Request) {
               },
             },
             community: {
-              include: {
-                parent: true,
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                parent: {
+                  select: {
+                    id: true,
+                    name: true,
+                    slug: true,
+                    parent: {
+                      select: {
+                        id: true,
+                        name: true,
+                        slug: true,
+                        parent: {
+                          select: {
+                            id: true,
+                            name: true,
+                            slug: true,
+                            _count: {
+                              select: {
+                                members: true
+                              }
+                            }
+                          }
+                        },
+                        _count: {
+                          select: {
+                            members: true
+                          }
+                        }
+                      }
+                    },
+                    _count: {
+                      select: {
+                        members: true
+                      }
+                    }
+                  }
+                },
                 _count: {
                   select: {
-                    members: true,
-                  },
-                },
-              },
+                    members: true
+                  }
+                }
+              }
             },
             votes: true,
             _count: {
@@ -96,7 +134,14 @@ export async function GET(request: Request) {
     })
 
     return NextResponse.json({
-      takes: viewedTakes.map(vt => vt.take),
+      takes: viewedTakes.map(vt => ({
+        ...vt.take,
+        _count: {
+          ...vt.take._count,
+          upvotes: vt.take.votes.filter(v => v.type === 'UP').length,
+          downvotes: vt.take.votes.filter(v => v.type === 'DOWN').length,
+        }
+      })),
       total,
       page,
       totalPages: Math.ceil(total / limit),

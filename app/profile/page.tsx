@@ -38,7 +38,20 @@ export default function ProfilePage() {
       // Fetch user takes
       fetch(`/api/users/${session.user.id}/takes`)
         .then((response) => response.json())
-        .then((data) => setTakes(data))
+        .then((data) => {
+          // Transform takes to include currentUserId and userVote
+          const transformedTakes = data.map(take => ({
+            ...take,
+            currentUserId: session.user.id,
+            userVote: take.votes.find(vote => vote.userId === session.user.id)?.type || null,
+            _count: {
+              ...take._count,
+              upvotes: take.votes.filter(vote => vote.type === 'UP').length,
+              downvotes: take.votes.filter(vote => vote.type === 'DOWN').length
+            }
+          }))
+          setTakes(transformedTakes)
+        })
         .catch((error) => console.error('Error fetching takes:', error))
 
       // Fetch user stats
@@ -108,7 +121,7 @@ export default function ProfilePage() {
         
         <TabsContent value="takes" className="space-y-4">
           <TakeFeed 
-            initialTakes={takes} 
+            takes={takes} 
             communitySlug={null}
             defaultView="list"
             showViewSwitcher={true}

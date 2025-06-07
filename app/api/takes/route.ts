@@ -59,6 +59,30 @@ export async function GET(request: Request) {
                 id: true,
                 name: true,
                 slug: true,
+                parent: {
+                  select: {
+                    id: true,
+                    name: true,
+                    slug: true,
+                    parent: {
+                      select: {
+                        id: true,
+                        name: true,
+                        slug: true,
+                        _count: {
+                          select: {
+                            members: true
+                          }
+                        }
+                      }
+                    },
+                    _count: {
+                      select: {
+                        members: true
+                      }
+                    }
+                  }
+                },
                 _count: {
                   select: {
                     members: true
@@ -163,6 +187,30 @@ export async function POST(request: Request) {
                 id: true,
                 name: true,
                 slug: true,
+                parent: {
+                  select: {
+                    id: true,
+                    name: true,
+                    slug: true,
+                    parent: {
+                      select: {
+                        id: true,
+                        name: true,
+                        slug: true,
+                        _count: {
+                          select: {
+                            members: true
+                          }
+                        }
+                      }
+                    },
+                    _count: {
+                      select: {
+                        members: true
+                      }
+                    }
+                  }
+                },
                 _count: {
                   select: {
                     members: true

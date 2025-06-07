@@ -29,6 +29,13 @@ export async function GET() {
             id: true,
             name: true,
             slug: true,
+            children: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+              }
+            }
           }
         },
         _count: {
@@ -42,12 +49,25 @@ export async function GET() {
     })
 
     // Format the communities to show proper hierarchy
-    const formattedCommunities = communities.map(community => ({
-      ...community,
-      displayName: community.parent 
-        ? `${community.parent.name} > ${community.name}`
-        : community.name
-    }))
+    const formattedCommunities = communities.map(community => {
+      let displayName = community.name
+      
+      // If it has a parent, show the full hierarchy
+      if (community.parent) {
+        if (community.parent.parent) {
+          // It's a child of a child
+          displayName = `${community.parent.parent.name} > ${community.parent.name} > ${community.name}`
+        } else {
+          // It's a direct child
+          displayName = `${community.parent.name} > ${community.name}`
+        }
+      }
+      
+      return {
+        ...community,
+        displayName
+      }
+    })
 
     return NextResponse.json(formattedCommunities)
   } catch (error) {

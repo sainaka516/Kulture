@@ -38,6 +38,42 @@ export async function GET(
             id: true,
             name: true,
             slug: true,
+            parent: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                parent: {
+                  select: {
+                    id: true,
+                    name: true,
+                    slug: true,
+                    parent: {
+                      select: {
+                        id: true,
+                        name: true,
+                        slug: true,
+                        _count: {
+                          select: {
+                            members: true
+                          }
+                        }
+                      }
+                    },
+                    _count: {
+                      select: {
+                        members: true
+                      }
+                    }
+                  }
+                },
+                _count: {
+                  select: {
+                    members: true
+                  }
+                }
+              }
+            },
             _count: {
               select: {
                 members: true
@@ -57,7 +93,40 @@ export async function GET(
       },
     })
 
-    return NextResponse.json(takes)
+    // Transform takes to include proper counts and parent chain
+    const transformedTakes = takes.map(take => ({
+      ...take,
+      community: {
+        ...take.community,
+        _count: {
+          ...take.community._count,
+          members: take.community._count?.members || 0
+        },
+        parent: take.community.parent ? {
+          ...take.community.parent,
+          parent: take.community.parent.parent ? {
+            ...take.community.parent.parent,
+            parent: take.community.parent.parent.parent ? {
+              ...take.community.parent.parent.parent,
+              _count: {
+                ...take.community.parent.parent.parent._count,
+                members: take.community.parent.parent.parent._count?.members || 0
+              }
+            } : null,
+            _count: {
+              ...take.community.parent.parent._count,
+              members: take.community.parent.parent._count?.members || 0
+            }
+          } : null,
+          _count: {
+            ...take.community.parent._count,
+            members: take.community.parent._count?.members || 0
+          }
+        } : null
+      }
+    }))
+
+    return NextResponse.json(transformedTakes)
   } catch (error) {
     console.error('Error fetching takes:', error)
     return new NextResponse('Internal Server Error', { status: 500 })

@@ -93,7 +93,7 @@ export default function LeaderboardClient() {
           onClick={() => setView('best')}
           className="min-w-[120px]"
         >
-          Best Takes
+          Kulture Kings
         </Button>
         <Button
           variant={view === 'worst' ? 'default' : 'outline'}
@@ -110,7 +110,7 @@ export default function LeaderboardClient() {
           {users.map((user, index) => (
             <Card key={user.id} className="p-4">
               <div className="flex items-center gap-4">
-                <div className="flex items-center justify-center w-8">
+                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-muted">
                   {index === 0 ? (
                     <Trophy className="h-6 w-6 text-yellow-500" />
                   ) : index === 1 ? (
@@ -179,8 +179,10 @@ export default function LeaderboardClient() {
               <div className="space-y-4">
                 {/* Take Header */}
                 <div className="flex items-center gap-4">
-                  <div className="flex items-center justify-center w-8">
-                    <ThumbsDown className="h-5 w-5 text-red-500" />
+                  <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/20">
+                    <span className="text-lg font-bold text-red-500">
+                      #{index + 1}
+                    </span>
                   </div>
                   <UserAvatar
                     name={take.author.name}

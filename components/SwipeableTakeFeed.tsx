@@ -29,11 +29,25 @@ export default function SwipeableTakeFeed({
   const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
-    console.log('Setting takes from initialTakes:', initialTakes)
-    setTakes(initialTakes)
-    setViewedTakes([])
-    setCurrentIndex(0)
-  }, [initialTakes])
+    console.log('SwipeableTakeFeed initializing with:', {
+      communityId,
+      communitySlug,
+      initialTakesCount: initialTakes?.length,
+      initialTakes: initialTakes?.map(take => ({
+        id: take.id,
+        title: take.title,
+        community: {
+          name: take.community.name,
+          parent: take.community.parent?.name
+        }
+      }))
+    })
+    
+    if (initialTakes?.length) {
+      setTakes(initialTakes)
+      console.log('Setting initial takes:', initialTakes)
+    }
+  }, [initialTakes, communityId, communitySlug])
 
   const currentTake = takes[currentIndex]
 

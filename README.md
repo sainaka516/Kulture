@@ -1,24 +1,63 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Kulture
+
+Kulture is a modern social platform for sharing and verifying takes within communities. It allows users to:
+
+- Share takes in specific communities
+- Get takes verified by community consensus
+- Build reputation through verified takes
+- Join and participate in hierarchical communities
+- Connect with friends and follow their takes
 
 ## Getting Started
 
-First, run the development server:
+First, set up your environment variables:
 
 ```bash
+cp .env.example .env
+```
+
+Then, install dependencies and run the development server:
+
+```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Features
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- 🌟 Community-based take verification
+- 👥 Hierarchical communities (sub-kultures)
+- 🏆 Leaderboard with Kulture Kings
+- 🤝 Friend connections
+- 🔍 Advanced search functionality
+- 🌓 Dark mode support
+- 📱 Responsive design
+
+## Tech Stack
+
+- Next.js 14 with App Router
+- TypeScript
+- Prisma with PostgreSQL
+- NextAuth.js for authentication
+- Tailwind CSS
+- Radix UI primitives
+- React Spring for animations
+
+## Development
+
+To work on Kulture locally:
+
+1. Clone the repository
+2. Install dependencies: `npm install`
+3. Set up your environment variables
+4. Run database migrations: `npx prisma migrate dev`
+5. Start the development server: `npm run dev`
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## Learn More
 

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { animated as a, useSpring } from '@react-spring/web'
 import { useDrag } from '@use-gesture/react'
-import { Take } from '@/lib/types'
+import { Take, Community } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { Button } from './ui/button'
 import { Card } from './ui/card'
@@ -42,74 +42,136 @@ export default function SwipeableCard({
     setWindowWidth(window.innerWidth)
   }, [])
 
-  // Calculate vote score and verification status
+  // Calculate vote score
   const voteScore = (take.votes || []).reduce((acc, vote) => {
     if (vote.type === 'UP') return acc + 1
     if (vote.type === 'DOWN') return acc - 1
     return acc
   }, 0)
 
-  // Check verification status for current community
+  // Check verification status for current community (the community where the take was posted)
   const currentMemberCount = take.community._count?.members || 0
   const requiredCurrentVotes = Math.ceil(currentMemberCount * 0.5)
   const isVerifiedInCurrent = currentMemberCount > 0 && voteScore >= requiredCurrentVotes
 
-  // Get parent member count and verification
+  // Get parent member count and verification (if we're in a child Kulture)
   const parentMemberCount = take.community.parent?._count?.members || 0
   const requiredParentVotes = Math.ceil(parentMemberCount * 0.5)
   const isVerifiedInParent = parentMemberCount > 0 && voteScore >= requiredParentVotes
 
-  // Determine if we're viewing from parent or child context
+  // Get verification status for all ancestors (parent chain)
+  const getVerifiedAncestors = (community: Community): { name: string; isVerified: boolean }[] => {
+    const ancestors = []
+    let currentParent = community.parent
+
+    while (currentParent) {
+      const memberCount = currentParent._count?.members || 0
+      const requiredVotes = Math.ceil(memberCount * 0.5)
+      const isVerified = memberCount > 0 && voteScore >= requiredVotes
+
+      ancestors.push({
+        name: currentParent.name,
+        isVerified
+      })
+
+      // Move up to the next parent in the chain
+      currentParent = currentParent.parent
+    }
+
+    // Debug log for ancestor verification
+    console.log('Ancestor verification in SwipeableCard:', {
+      takeId: take.id,
+      title: take.title,
+      ancestors: ancestors.map(a => ({
+        name: a.name,
+        isVerified: a.isVerified,
+      }))
+    })
+
+    return ancestors
+  }
+
+  // Get verification status for all descendants (if we're in a parent Kulture)
+  const getVerifiedDescendants = (community: Community): { name: string; isVerified: boolean }[] => {
+    // Only check descendants if we're viewing from a parent Kulture
+    // and the take belongs to one of its descendants
+    if (!currentKultureSlug || !take.community.parent) {
+      return []
+    }
+
+    // Check if we're viewing from a parent Kulture
+    const isViewingFromParent = currentKultureSlug === take.community.parent.slug
+
+    if (!isViewingFromParent) {
+      return []
+    }
+
+    const verifiedInThisLevel = (community.children || []).map(child => {
+      // Only check verification for the child community that contains this take
+      if (child.id === take.community.id) {
+        const memberCount = child._count?.members || 0
+        const requiredVotes = Math.ceil(memberCount * 0.5)
+        const isVerified = memberCount > 0 && voteScore >= requiredVotes
+        
+        return [{ name: child.name, isVerified }]
+      }
+      return []
+    }).flat()
+
+    return verifiedInThisLevel
+  }
+
+  const verifiedDescendants = getVerifiedDescendants(take.community)
+  const verifiedAncestors = getVerifiedAncestors(take.community)
+
+  // Calculate total number of Kultures where the take is verified
+  const verifiedCount = [
+    isVerifiedInCurrent,
+    ...verifiedAncestors.map(ancestor => ancestor.isVerified),
+    ...verifiedDescendants.map(desc => desc.isVerified)
+  ].filter(Boolean).length
+
+  // Determine if we're viewing from parent or sibling context
   const isParentView = currentKultureSlug === take.community.parent?.slug
   const isChildView = currentKultureSlug === take.community.slug
+  const isSiblingView = take.community.parent?.id === take.community.parent?.id && !isParentView && !isChildView
 
-  // Determine checkmark color based on verification status
-  let checkmarkColor = null
-  if (isChildView) {
-    // On child's page: green if verified in child context
-    checkmarkColor = isVerifiedInCurrent ? "text-green-500" : null
-  } else if (isParentView) {
-    // On parent's page:
-    // Show blue if verified in parent context (>50% of parent members)
-    // Show green if only verified in child context
-    if (isVerifiedInParent) {
-      checkmarkColor = "text-blue-500"
-    } else if (isVerifiedInCurrent) {
-      checkmarkColor = "text-green-500"
-    }
-  } else {
-    // On other pages
-    if (isVerifiedInParent) {
-      checkmarkColor = "text-blue-500"
-    } else if (isVerifiedInCurrent) {
-      checkmarkColor = "text-green-500"
-    }
-  }
+  // Determine checkmark color - always blue for verification
+  const checkmarkColor = verifiedCount > 0 ? "text-blue-500" : null
 
   // Get tooltip text based on verification status
   const getTooltipText = () => {
-    if (isParentView) {
-      if (isVerifiedInParent) {
-        return `This take is verified in both ${take.community.parent?.name} (${voteScore}/${requiredParentVotes} votes) and ${take.community.name} (${voteScore}/${requiredCurrentVotes} votes)`
-      } else if (isVerifiedInCurrent) {
-        return `This take is verified in ${take.community.name} (${voteScore}/${requiredCurrentVotes} votes)`
-      }
-    } else if (isChildView) {
-      if (isVerifiedInCurrent) {
-        return `This take is verified in ${take.community.name} (${voteScore}/${requiredCurrentVotes} votes)`
-      }
-    } else {
-      if (isVerifiedInParent) {
-        return `This take is verified in both ${take.community.parent?.name} (${voteScore}/${requiredParentVotes} votes) and ${take.community.name} (${voteScore}/${requiredCurrentVotes} votes)`
-      } else if (isVerifiedInCurrent) {
-        return `This take is verified in ${take.community.name} (${voteScore}/${requiredCurrentVotes} votes)`
-      }
+    const verifiedKultures = []
+    if (isVerifiedInCurrent) {
+      verifiedKultures.push(take.community.name)
     }
-    return ''
+    // Add all verified ancestors
+    verifiedAncestors.forEach(ancestor => {
+      if (ancestor.isVerified) {
+        verifiedKultures.push(ancestor.name)
+      }
+    })
+    // Add all verified descendants
+    verifiedDescendants.forEach(desc => {
+      if (desc.isVerified) {
+        verifiedKultures.push(desc.name)
+      }
+    })
+
+    if (verifiedKultures.length === 0) {
+      return ''
+    }
+
+    if (verifiedKultures.length === 1) {
+      return `This take is verified in ${verifiedKultures[0]} (${voteScore} votes)`
+    }
+
+    const lastKulture = verifiedKultures.pop()
+    return `This take is verified in ${verifiedKultures.join(', ')} and ${lastKulture} (${voteScore} votes)`
   }
 
-  // Check if verified in both cultures
-  const isVerifiedInBoth = isVerifiedInCurrent && isVerifiedInParent
+  // Set verification badge text to show total number of verified Kultures
+  const verificationBadgeText = verifiedCount > 0 ? `${verifiedCount}x` : ""
 
   // Configure spring animation
   const [{ x, rotate, scale }, api] = useSpring(() => ({
@@ -200,6 +262,37 @@ export default function SwipeableCard({
 
   const userVote = session?.user ? take.votes.find(vote => vote.userId === session.user.id)?.type : null
 
+  // Debug logging
+  console.log('SwipeableCard verification details:', {
+    takeId: take.id,
+    title: take.title,
+    communityName: take.community.name,
+    voteScore,
+    currentMemberCount,
+    requiredCurrentVotes,
+    isVerifiedInCurrent,
+    parentChain: {
+      parent: take.community.parent ? {
+        name: take.community.parent.name,
+        memberCount: take.community.parent._count?.members,
+        requiredVotes: take.community.parent._count?.members ? Math.ceil(take.community.parent._count.members * 0.5) : null,
+        isVerified: take.community.parent._count?.members ? voteScore >= Math.ceil(take.community.parent._count.members * 0.5) : false
+      } : null,
+      grandparent: take.community.parent?.parent ? {
+        name: take.community.parent.parent.name,
+        memberCount: take.community.parent.parent._count?.members,
+        requiredVotes: take.community.parent.parent._count?.members ? Math.ceil(take.community.parent.parent._count.members * 0.5) : null,
+        isVerified: take.community.parent.parent._count?.members ? voteScore >= Math.ceil(take.community.parent.parent._count.members * 0.5) : false
+      } : null
+    },
+    verifiedDescendants: verifiedDescendants.map(desc => ({ name: desc.name, isVerified: desc.isVerified })),
+    verifiedCount,
+    verificationBadgeText: verifiedCount > 0 ? `${verifiedCount}x` : "",
+    votes: take.votes.map(v => ({ type: v.type, userId: v.userId })),
+    upvotes: take.votes.filter(v => v.type === 'UP').length,
+    downvotes: take.votes.filter(v => v.type === 'DOWN').length
+  })
+
   return (
     <a.div
       {...bindDrag()}
@@ -264,8 +357,8 @@ export default function SwipeableCard({
                   <TooltipTrigger>
                     <div className="flex items-center">
                       <CheckCircle2 className={cn("h-4 w-4", checkmarkColor)} />
-                      {isVerifiedInBoth && (
-                        <span className="ml-1 text-xs font-bold text-blue-500">2x</span>
+                      {verificationBadgeText && (
+                        <span className="ml-1 text-xs font-bold text-blue-500">{verificationBadgeText}</span>
                       )}
                     </div>
                   </TooltipTrigger>
@@ -293,8 +386,8 @@ export default function SwipeableCard({
                                 "transition-colors duration-200"
                               )} 
                             />
-                            {isVerifiedInBoth && (
-                              <span className="text-sm font-bold text-blue-500">2x</span>
+                            {verificationBadgeText && (
+                              <span className="text-sm font-bold text-blue-500">{verificationBadgeText}</span>
                             )}
                           </div>
                         </TooltipTrigger>

@@ -11,6 +11,10 @@ interface CommunityCardProps {
     parent?: {
       name: string
       slug: string
+      parent?: {
+        name: string
+        slug: string
+      } | null
     } | null
     _count: {
       members: number
@@ -21,6 +25,41 @@ interface CommunityCardProps {
 }
 
 export default function CommunityCard({ community }: CommunityCardProps) {
+  // Helper function to build the hierarchy display
+  const getHierarchyDisplay = () => {
+    if (!community.parent) {
+      return community.name
+    }
+
+    if (community.parent.parent) {
+      // It's a child of a child
+      return (
+        <span className="flex items-center gap-1">
+          <Link href={`/k/${community.parent.parent.slug}`} className="text-muted-foreground hover:text-foreground">
+            {community.parent.parent.name}
+          </Link>
+          <span className="text-muted-foreground mx-1">›</span>
+          <Link href={`/k/${community.parent.slug}`} className="text-muted-foreground hover:text-foreground">
+            {community.parent.name}
+          </Link>
+          <span className="text-muted-foreground mx-1">›</span>
+          <span>{community.name}</span>
+        </span>
+      )
+    }
+
+    // It's a direct child
+    return (
+      <span className="flex items-center gap-1">
+        <Link href={`/k/${community.parent.slug}`} className="text-muted-foreground hover:text-foreground">
+          {community.parent.name}
+        </Link>
+        <span className="text-muted-foreground mx-1">›</span>
+        <span>{community.name}</span>
+      </span>
+    )
+  }
+
   return (
     <Card className="overflow-hidden">
       <div className="p-6">
@@ -30,25 +69,14 @@ export default function CommunityCard({ community }: CommunityCardProps) {
               href={`/k/${community.slug}`}
               className="text-lg font-semibold hover:text-purple-900 dark:hover:text-purple-400"
             >
-              {community.parent ? (
-                <span className="flex items-center gap-1">
-                  <span className="text-muted-foreground">{community.parent.name}</span>
-                  <span className="text-muted-foreground mx-1">></span>
-                  <span>{community.name}</span>
-                </span>
-              ) : (
-                community.name
-              )}
+              {getHierarchyDisplay()}
             </Link>
             {community.parent && (
               <div className="text-sm text-muted-foreground mt-1">
-                Sub-community of{' '}
-                <Link
-                  href={`/k/${community.parent.slug}`}
-                  className="hover:text-foreground"
-                >
-                  {community.parent.name}
-                </Link>
+                {community.parent.parent 
+                  ? `Sub-community of ${community.parent.name} under ${community.parent.parent.name}`
+                  : `Sub-community of ${community.parent.name}`
+                }
               </div>
             )}
           </div>

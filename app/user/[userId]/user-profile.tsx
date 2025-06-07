@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from 'react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Mail, Calendar, Trophy } from 'lucide-react'
+import { Mail, Calendar, Trophy, MessageSquare, Share2, Users2, Heart } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import TakeFeed from '@/components/TakeFeed'
 import FriendRequestButton from '@/components/FriendRequestButton'
 import UsernameEditor from '@/components/UsernameEditor'
 import { Session } from 'next-auth'
+import { Card } from '@/components/ui/card'
+import { Separator } from '@/components/ui/separator'
 
 interface UserProfileProps {
   user: any // Replace with proper type
@@ -38,94 +40,121 @@ export default function UserProfile({ user, session, showEmail }: UserProfilePro
 
   const isOwnProfile = session?.user?.id === currentUser.id
 
+  const stats = [
+    {
+      label: 'Takes',
+      value: currentUser._count.takes,
+      icon: Share2
+    },
+    {
+      label: 'Comments',
+      value: currentUser._count.comments,
+      icon: MessageSquare
+    },
+    {
+      label: 'Kultures',
+      value: currentUser._count.communities,
+      icon: Heart
+    },
+    {
+      label: 'Friends',
+      value: currentUser._count.friends,
+      icon: Users2
+    }
+  ]
+
   return (
-    <div className="container max-w-2xl py-6">
-      <div className="flex items-start gap-4 mb-6">
-        <Avatar className="h-20 w-20">
-          <AvatarImage src={currentUser.image ?? undefined} />
-          <AvatarFallback>
-            {currentUser.username?.[0]?.toUpperCase() ?? '?'}
-          </AvatarFallback>
-        </Avatar>
-        <div className="flex-1">
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <h1 className="text-2xl font-bold flex items-center gap-2">
-                {isOwnProfile ? (
-                  <UsernameEditor
-                    currentUsername={currentUser.username}
-                    onUsernameUpdated={(newUsername) => {
-                      setCurrentUser(prev => ({ ...prev, username: newUsername }))
-                    }}
-                  />
-                ) : (
-                  <span>@{currentUser.username}</span>
-                )}
-                {rank && (
-                  <span className="inline-flex items-center gap-1 text-sm font-semibold text-amber-500">
-                    <Trophy className="h-4 w-4" />
-                    #{rank}
-                  </span>
-                )}
-              </h1>
-              {currentUser.verified && (
-                <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
-                  Verified
+    <div className="container max-w-4xl py-8">
+      {/* Hero Section */}
+      <div className="relative w-full h-48 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl mb-16">
+        <div className="absolute -bottom-12 left-8 flex items-end gap-6">
+          <Avatar className="h-24 w-24 border-4 border-background">
+            <AvatarImage src={currentUser.image ?? undefined} />
+            <AvatarFallback className="text-2xl">
+              {currentUser.username?.[0]?.toUpperCase() ?? '?'}
+            </AvatarFallback>
+          </Avatar>
+          <div className="mb-2">
+            <div className="flex items-center gap-3">
+              {isOwnProfile ? (
+                <UsernameEditor
+                  currentUsername={currentUser.username}
+                  onUsernameUpdated={(newUsername) => {
+                    setCurrentUser(prev => ({ ...prev, username: newUsername }))
+                  }}
+                />
+              ) : (
+                <h1 className="text-2xl font-bold text-white">@{currentUser.username}</h1>
+              )}
+              {rank && (
+                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-500/10 text-amber-500 text-sm font-medium">
+                  <Trophy className="h-4 w-4" />
+                  #{rank}
                 </span>
               )}
             </div>
-            {!isOwnProfile && (
-              <FriendRequestButton 
-                userId={currentUser.id} 
-                initialStatus={
-                  currentUser.friends?.some((f: any) => f.friendId === session?.user?.id)
-                    ? 'FRIENDS'
-                    : currentUser.receivedFriendRequests?.some((r: any) => r.senderId === session?.user?.id && r.status === 'PENDING')
-                      ? 'PENDING'
-                      : 'NONE'
-                }
-              />
-            )}
-          </div>
-          {showEmail && currentUser.email && (
-            <div className="flex items-center gap-2 mt-2 text-muted-foreground">
-              <Mail className="h-4 w-4" />
-              <span>{currentUser.email}</span>
-            </div>
-          )}
-          <div className="flex items-center gap-2 mt-2 text-muted-foreground">
-            <Calendar className="h-4 w-4" />
-            <span>Joined {formatDate(currentUser.createdAt)}</span>
-          </div>
-          <div className="flex items-center gap-4 mt-4">
-            <div>
-              <span className="font-semibold">{currentUser._count.takes}</span>{' '}
-              <span className="text-muted-foreground">takes</span>
-            </div>
-            <div>
-              <span className="font-semibold">{currentUser._count.comments}</span>{' '}
-              <span className="text-muted-foreground">comments</span>
-            </div>
-            <div>
-              <span className="font-semibold">{currentUser._count.communities}</span>{' '}
-              <span className="text-muted-foreground">kultures</span>
-            </div>
-            <div>
-              <span className="font-semibold">{currentUser._count.friends}</span>{' '}
-              <span className="text-muted-foreground">friends</span>
-            </div>
           </div>
         </div>
+        {!isOwnProfile && (
+          <div className="absolute right-8 bottom-4">
+            <FriendRequestButton 
+              userId={currentUser.id} 
+              initialStatus={
+                currentUser.friends?.some((f: any) => f.friendId === session?.user?.id)
+                  ? 'FRIENDS'
+                  : currentUser.receivedFriendRequests?.some((r: any) => r.senderId === session?.user?.id && r.status === 'PENDING')
+                    ? 'PENDING'
+                    : 'NONE'
+              }
+            />
+          </div>
+        )}
       </div>
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold">Takes</h2>
+
+      {/* User Info & Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        {/* User Info Card */}
+        <Card className="p-6 col-span-2">
+          <h2 className="text-lg font-semibold mb-4">About</h2>
+          <div className="space-y-3">
+            {showEmail && currentUser.email && (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Mail className="h-4 w-4" />
+                <span>{currentUser.email}</span>
+              </div>
+            )}
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Calendar className="h-4 w-4" />
+              <span>Joined {formatDate(currentUser.createdAt)}</span>
+            </div>
+          </div>
+        </Card>
+
+        {/* Stats Card */}
+        <Card className="p-6">
+          <h2 className="text-lg font-semibold mb-4">Stats</h2>
+          <div className="grid grid-cols-2 gap-4">
+            {stats.map((stat, index) => (
+              <div key={index} className="text-center p-2 rounded-lg bg-muted/50">
+                <stat.icon className="h-5 w-5 mx-auto mb-1 text-muted-foreground" />
+                <div className="font-semibold">{stat.value}</div>
+                <div className="text-xs text-muted-foreground">{stat.label}</div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+
+      {/* Takes Feed */}
+      <Card className="p-6">
+        <h2 className="text-lg font-semibold mb-4">Takes</h2>
         <TakeFeed 
           takes={currentUser.takes}
           communitySlug={null}
           defaultView="list"
           showViewSwitcher={true}
         />
-      </div>
+      </Card>
     </div>
   )
 } 

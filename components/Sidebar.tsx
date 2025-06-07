@@ -25,7 +25,6 @@ export default function Sidebar() {
   const navigation = [
     { name: 'Explore', href: '/explore', icon: Home },
     { name: 'Notifications', href: '/notifications', icon: Bell, showNotificationBadge: true },
-    { name: 'Messages', href: '/messages', icon: MessageSquare },
     { name: 'Friends', href: '/friends', icon: Users },
     { name: 'Friend Requests', href: '/friends/requests', icon: UserPlus, showFriendRequestBadge: true },
     { name: 'Profile', href: session?.user ? `/user/${session.user.id}` : '/profile', icon: User },

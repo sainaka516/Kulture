@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -19,15 +13,14 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
   @@index([userId])
@@ -44,48 +37,48 @@ model Session {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  username      String?   @unique
-  password      String?
-  emailVerified DateTime?
-  image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  accounts      Account[]
-  sessions      Session[]
-  takes         Take[]    @relation("UserTakes")
-  votes         Vote[]
-  comments      Comment[]
-  communities   CommunityMember[]
-  ownedCommunities Community[] @relation("CommunityOwner")
-  verified      Boolean   @default(false)
-  viewedTakes   ViewedTake[]
-  sentFriendRequests FriendRequest[] @relation("SentFriendRequests")
-  receivedFriendRequests FriendRequest[] @relation("ReceivedFriendRequests")
-  friends       Friendship[] @relation("UserFriends")
-  friendsOf     Friendship[] @relation("FriendsOfUser")
-  notifications        Notification[] @relation()
-  notificationsSent    Notification[] @relation("NotificationFrom")
+  id                     String            @id @default(cuid())
+  name                   String?
+  email                  String?           @unique
+  emailVerified          DateTime?
+  image                  String?
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
+  username               String?           @unique
+  verified               Boolean           @default(false)
+  password               String?
+  accounts               Account[]
+  comments               Comment[]
+  ownedCommunities       Community[]       @relation("CommunityOwner")
+  communities            CommunityMember[]
+  receivedFriendRequests FriendRequest[]   @relation("ReceivedFriendRequests")
+  sentFriendRequests     FriendRequest[]   @relation("SentFriendRequests")
+  friendsOf              Friendship[]      @relation("FriendsOfUser")
+  friends                Friendship[]      @relation("UserFriends")
+  notificationsSent      Notification[]    @relation("NotificationFrom")
+  notifications          Notification[]
+  sessions               Session[]
+  takes                  Take[]            @relation("UserTakes")
+  viewedTakes            ViewedTake[]
+  votes                  Vote[]
 }
 
 model Community {
-  id          String    @id @default(cuid())
+  id          String            @id @default(cuid())
   name        String
-  slug        String    @unique
-  title       String
   description String?
-  rules       String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  slug        String            @unique
+  parentId    String?
   ownerId     String
-  owner       User      @relation("CommunityOwner", fields: [ownerId], references: [id])
+  rules       String?
+  title       String
+  owner       User              @relation("CommunityOwner", fields: [ownerId], references: [id])
+  parent      Community?        @relation("SubCommunities", fields: [parentId], references: [id])
+  children    Community[]       @relation("SubCommunities")
   members     CommunityMember[]
   takes       Take[]
-  parentId    String?
-  parent      Community? @relation("SubCommunities", fields: [parentId], references: [id])
-  children    Community[] @relation("SubCommunities")
 
   @@index([ownerId])
   @@index([parentId])
@@ -93,12 +86,12 @@ model Community {
 
 model CommunityMember {
   id          String    @id @default(cuid())
-  role        String    @default("MEMBER") // OWNER, MODERATOR, MEMBER
+  role        String    @default("MEMBER")
   createdAt   DateTime  @default(now())
   userId      String
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   communityId String
   community   Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, communityId])
   @@index([userId])
@@ -106,19 +99,19 @@ model CommunityMember {
 }
 
 model Take {
-  id          String    @id @default(cuid())
-  title       String
-  content     String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  authorId    String
-  author      User      @relation("UserTakes", fields: [authorId], references: [id])
-  communityId String
-  community   Community @relation(fields: [communityId], references: [id])
-  votes       Vote[]
-  comments    Comment[]
-  viewedBy    ViewedTake[]
+  id            String         @id @default(cuid())
+  title         String
+  content       String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  authorId      String
+  communityId   String
+  comments      Comment[]
   notifications Notification[]
+  author        User           @relation("UserTakes", fields: [authorId], references: [id])
+  community     Community      @relation(fields: [communityId], references: [id])
+  viewedBy      ViewedTake[]
+  votes         Vote[]
 
   @@index([authorId])
   @@index([communityId])
@@ -130,8 +123,8 @@ model Comment {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   authorId  String
-  author    User     @relation(fields: [authorId], references: [id])
   takeId    String?
+  author    User     @relation(fields: [authorId], references: [id])
   take      Take?    @relation(fields: [takeId], references: [id], onDelete: Cascade)
 
   @@index([authorId])
@@ -140,13 +133,13 @@ model Comment {
 
 model Vote {
   id        String   @id @default(cuid())
-  type      String   // UP or DOWN
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  type      String
+  updatedAt DateTime @updatedAt
   takeId    String
   take      Take     @relation(fields: [takeId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id])
 
   @@unique([userId, takeId])
   @@index([userId])
@@ -162,12 +155,12 @@ model VerificationToken {
 }
 
 model ViewedTake {
-  id        String   @id @default(cuid())
-  userId    String
-  takeId    String
-  viewedAt  DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  take      Take     @relation(fields: [takeId], references: [id], onDelete: Cascade)
+  id       String   @id @default(cuid())
+  userId   String
+  takeId   String
+  viewedAt DateTime @default(now())
+  take     Take     @relation(fields: [takeId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, takeId])
   @@index([userId])
@@ -175,14 +168,14 @@ model ViewedTake {
 }
 
 model FriendRequest {
-  id          String   @id @default(cuid())
-  senderId    String
-  receiverId  String
-  status      String   @default("PENDING") // PENDING, ACCEPTED, REJECTED
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  sender      User     @relation("SentFriendRequests", fields: [senderId], references: [id], onDelete: Cascade)
-  receiver    User     @relation("ReceivedFriendRequests", fields: [receiverId], references: [id], onDelete: Cascade)
+  id         String   @id @default(cuid())
+  senderId   String
+  receiverId String
+  status     String   @default("PENDING")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  receiver   User     @relation("ReceivedFriendRequests", fields: [receiverId], references: [id], onDelete: Cascade)
+  sender     User     @relation("SentFriendRequests", fields: [senderId], references: [id], onDelete: Cascade)
 
   @@unique([senderId, receiverId])
   @@index([senderId])
@@ -190,12 +183,12 @@ model FriendRequest {
 }
 
 model Friendship {
-  id          String   @id @default(cuid())
-  userId      String
-  friendId    String
-  createdAt   DateTime @default(now())
-  user        User     @relation("UserFriends", fields: [userId], references: [id], onDelete: Cascade)
-  friend      User     @relation("FriendsOfUser", fields: [friendId], references: [id], onDelete: Cascade)
+  id        String   @id @default(cuid())
+  userId    String
+  friendId  String
+  createdAt DateTime @default(now())
+  friend    User     @relation("FriendsOfUser", fields: [friendId], references: [id], onDelete: Cascade)
+  user      User     @relation("UserFriends", fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, friendId])
   @@index([userId])
@@ -204,16 +197,15 @@ model Friendship {
 
 model Notification {
   id        String   @id @default(cuid())
-  userId    String   // User who should receive the notification
-  type      String   // FRIEND_REQUEST_ACCEPTED, TAKE_UPVOTED, TAKE_DOWNVOTED
-  takeId    String?  // Optional: for vote notifications
-  fromId    String?  // Optional: for friend request notifications
+  userId    String
+  type      String
+  takeId    String?
+  fromId    String?
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
-
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  take      Take?    @relation(fields: [takeId], references: [id], onDelete: Cascade)
   from      User?    @relation("NotificationFrom", fields: [fromId], references: [id], onDelete: Cascade)
+  take      Take?    @relation(fields: [takeId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([takeId])

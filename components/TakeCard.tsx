@@ -9,50 +9,77 @@ import VoteButtons from '@/components/VoteButtons'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { MoreHorizontal } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import MoveTakeDialog from './MoveTakeDialog'
+import { Take } from '@prisma/client'
+import { Community } from '@prisma/client'
+import { Vote } from '@prisma/client'
+import { User } from '@prisma/client'
 
-interface Take {
-  id: string
-  title: string
-  content: string | null
-  createdAt: Date
-  author: {
-    id: string
-    name: string | null
-    username: string
-    verified: boolean
-    image: string | null
-  }
-  community: {
-    id: string
-    name: string
-    slug: string
-    _count?: {
-      members: number
-    }
-    parent?: {
-      id: string
-      name: string
-      slug: string
-      _count?: {
-        members: number
-      }
-    } | null
-  }
-  votes: {
-    type: 'UP' | 'DOWN'
-    userId: string
-  }[]
+interface SimpleCommunity {
+  id: string;
+  name: string;
+  slug: string;
   _count?: {
-    comments: number
-  }
+    members: number;
+  };
+  parent?: {
+    id: string;
+    name: string;
+    slug: string;
+    parent?: {
+      id: string;
+      name: string;
+      slug: string;
+      _count?: {
+        members: number;
+      };
+    } | null;
+    _count?: {
+      members: number;
+    };
+  } | null;
+  children?: SimpleCommunity[];
+}
+
+interface ExtendedTake extends Omit<Take, 'community'> {
+  community: SimpleCommunity;
+  votes: Vote[];
+  author: {
+    id: string;
+    name: string | null;
+    username: string;
+    image: string | null;
+    verified: boolean;
+  };
+  _count: {
+    comments: number;
+    upvotes: number;
+    downvotes: number;
+  };
+  currentUserId?: string;
+  userVote?: 'UP' | 'DOWN' | null;
 }
 
 interface TakeCardProps {
-  take: Take
-  currentKultureSlug?: string // Add this prop to know which Kulture page we're on
+  take: ExtendedTake;
+  onVote?: (takeId: string, type: 'UP' | 'DOWN') => void;
+  showCommunity?: boolean;
+  currentKultureSlug?: string;
+  onViewed?: () => void;
 }
 
 export default function TakeCard({ take, currentKultureSlug }: TakeCardProps) {
+  const isAuthor = take.author.id === take.currentUserId
+
   // Calculate vote score with null check
   const voteScore = (take.votes || []).reduce((acc, vote) => {
     if (vote.type === 'UP') return acc + 1
@@ -60,200 +87,304 @@ export default function TakeCard({ take, currentKultureSlug }: TakeCardProps) {
     return acc
   }, 0)
 
-  // Check verification status for current community (the community where the take was posted)
+  // Check verification status for current community
   const currentMemberCount = take.community._count?.members || 0
   const requiredCurrentVotes = Math.ceil(currentMemberCount * 0.5)
   const isVerifiedInCurrent = currentMemberCount > 0 && voteScore >= requiredCurrentVotes
 
-  // Get parent member count and verification
-  const parentMemberCount = take.community.parent?._count?.members || 0
-  const requiredParentVotes = Math.ceil(parentMemberCount * 0.5)
-  const isVerifiedInParent = parentMemberCount > 0 && voteScore >= requiredParentVotes
+  console.log('Take details:', {
+    takeId: take.id,
+    title: take.title,
+    community: {
+      name: take.community.name,
+      parent: take.community.parent?.name,
+      memberCount: take.community._count?.members
+    },
+    voteScore,
+    verificationDetails: {
+      currentMemberCount,
+      requiredCurrentVotes,
+      isVerifiedInCurrent,
+      community: take.community.name,
+      parentCommunity: take.community.parent?.name
+    }
+  })
 
-  // Debug logs
+  // Get verification status for all ancestors (parent chain)
+  const getVerifiedAncestors = (community: SimpleCommunity): { name: string; isVerified: boolean }[] => {
+    const ancestors = []
+    let currentParent = community.parent
+
+    while (currentParent) {
+      const memberCount = currentParent._count?.members || 0
+      const requiredVotes = Math.ceil(memberCount * 0.5)
+      const isVerified = memberCount > 0 && voteScore >= requiredVotes
+
+      ancestors.push({
+        name: currentParent.name,
+        isVerified
+      })
+
+      // Move up to the next parent in the chain
+      currentParent = currentParent.parent
+    }
+
+    // Debug log for ancestor verification
+    console.log('Ancestor verification:', {
+      takeId: take.id,
+      title: take.title,
+      ancestors: ancestors.map(a => ({
+        name: a.name,
+        isVerified: a.isVerified,
+      }))
+    })
+
+    return ancestors
+  }
+
+  // Get verification status for all descendants (if we're in a parent Kulture)
+  const getVerifiedDescendants = (community: SimpleCommunity): { name: string; isVerified: boolean }[] => {
+    // Only check descendants if we're viewing from a parent Kulture
+    // and the take belongs to one of its descendants
+    if (!currentKultureSlug || !take.community.parent) {
+      return []
+    }
+
+    // Check if we're viewing from a parent Kulture
+    const isViewingFromParent = currentKultureSlug === take.community.parent.slug
+
+    if (!isViewingFromParent) {
+      return []
+    }
+
+    const verifiedInThisLevel = (community.children || []).map(child => {
+      // Only check verification for the child community that contains this take
+      if (child.id === take.community.id) {
+        const memberCount = child._count?.members || 0
+        const requiredVotes = Math.ceil(memberCount * 0.5)
+        const isVerified = memberCount > 0 && voteScore >= requiredVotes
+        
+        return [{ name: child.name, isVerified }]
+      }
+      return []
+    }).flat()
+
+    return verifiedInThisLevel
+  }
+
+  const verifiedDescendants = getVerifiedDescendants(take.community)
+  const verifiedAncestors = getVerifiedAncestors(take.community)
+
+  // Calculate total number of Kultures where the take is verified
+  const verifiedCount = [
+    isVerifiedInCurrent,
+    ...verifiedAncestors.map(ancestor => ancestor.isVerified),
+    ...verifiedDescendants.map(desc => desc.isVerified)
+  ].filter(Boolean).length
+
+  // Get tooltip text based on verification status
+  const getTooltipText = () => {
+    const verifiedKultures = []
+    if (isVerifiedInCurrent) {
+      verifiedKultures.push(take.community.name)
+    }
+    // Add all verified ancestors
+    verifiedAncestors.forEach(ancestor => {
+      if (ancestor.isVerified) {
+        verifiedKultures.push(ancestor.name)
+      }
+    })
+    // Add all verified descendants
+    verifiedDescendants.forEach(desc => {
+      if (desc.isVerified) {
+        verifiedKultures.push(desc.name)
+      }
+    })
+
+    if (verifiedKultures.length === 0) {
+      return ''
+    }
+
+    if (verifiedKultures.length === 1) {
+      return `This take is verified in ${verifiedKultures[0]} (${voteScore} votes)`
+    }
+
+    const lastKulture = verifiedKultures.pop()
+    return `This take is verified in ${verifiedKultures.join(', ')} and ${lastKulture} (${voteScore} votes)`
+  }
+
+  // Debug logging
   console.log('Take verification details:', {
     takeId: take.id,
     communityName: take.community.name,
     voteScore,
     currentMemberCount,
     requiredCurrentVotes,
-    parentMemberCount,
-    requiredParentVotes,
-    isVerifiedInParent,
     isVerifiedInCurrent,
-    parentName: take.community.parent?.name,
-    parentMemberCount: take.community.parent?._count?.members,
+    parentChain: {
+      parent: take.community.parent ? {
+        name: take.community.parent.name,
+        memberCount: take.community.parent._count?.members,
+        requiredVotes: take.community.parent._count?.members ? Math.ceil(take.community.parent._count.members * 0.5) : null,
+        isVerified: take.community.parent._count?.members ? voteScore >= Math.ceil(take.community.parent._count.members * 0.5) : false
+      } : null,
+      grandparent: take.community.parent?.parent ? {
+        name: take.community.parent.parent.name,
+        memberCount: take.community.parent.parent._count?.members,
+        requiredVotes: take.community.parent.parent._count?.members ? Math.ceil(take.community.parent.parent._count.members * 0.5) : null,
+        isVerified: take.community.parent.parent._count?.members ? voteScore >= Math.ceil(take.community.parent.parent._count.members * 0.5) : false
+      } : null
+    },
+    verifiedDescendants: verifiedDescendants.map(desc => ({ name: desc.name, isVerified: desc.isVerified })),
+    verifiedCount,
+    verificationBadgeText: verifiedCount > 0 ? `${verifiedCount}x` : "",
     votes: take.votes.map(v => ({ type: v.type, userId: v.userId })),
     upvotes: take.votes.filter(v => v.type === 'UP').length,
     downvotes: take.votes.filter(v => v.type === 'DOWN').length
   })
 
-  // Determine if we're viewing from parent or child context
+  // Determine if we're viewing from parent or sibling context
   const isParentView = currentKultureSlug === take.community.parent?.slug
   const isChildView = currentKultureSlug === take.community.slug
+  const isSiblingView = take.community.parent?.id === take.community.parent?.id && !isParentView && !isChildView
 
-  // Determine checkmark color based on verification status
-  let checkmarkColor = null
-  if (isChildView) {
-    // On child's page: green if verified in child context
-    checkmarkColor = isVerifiedInCurrent ? "text-green-500" : null
-    console.log('Child view checkmark:', { isVerifiedInCurrent, checkmarkColor })
-  } else if (isParentView) {
-    // On parent's page:
-    // Show blue if verified in parent context (>50% of parent members)
-    // Show green if only verified in child context
-    if (isVerifiedInParent) {
-      checkmarkColor = "text-blue-500"
-    } else if (isVerifiedInCurrent) {
-      checkmarkColor = "text-green-500"
-    }
-    console.log('Parent view checkmark:', { isVerifiedInParent, isVerifiedInCurrent, checkmarkColor })
-  } else {
-    // On other pages
-    if (isVerifiedInParent) {
-      checkmarkColor = "text-blue-500"
-    } else if (isVerifiedInCurrent) {
-      checkmarkColor = "text-green-500"
-    }
-    console.log('Other view checkmark:', { isVerifiedInParent, isVerifiedInCurrent, checkmarkColor })
-  }
+  // Determine checkmark color - always blue for verification
+  const checkmarkColor = verifiedCount > 0 ? "text-blue-500" : null
 
-  // Get tooltip text based on verification status
-  const getTooltipText = () => {
-    if (isParentView) {
-      if (isVerifiedInParent) {
-        return `This take is verified in both ${take.community.parent?.name} (${voteScore}/${requiredParentVotes} votes) and ${take.community.name} (${voteScore}/${requiredCurrentVotes} votes)`
-      } else if (isVerifiedInCurrent) {
-        return `This take is verified in ${take.community.name} (${voteScore}/${requiredCurrentVotes} votes)`
-      }
-    } else if (isChildView) {
-      if (isVerifiedInCurrent) {
-        return `This take is verified in ${take.community.name} (${voteScore}/${requiredCurrentVotes} votes)`
-      }
-    } else {
-      if (isVerifiedInParent) {
-        return `This take is verified in both ${take.community.parent?.name} (${voteScore}/${requiredParentVotes} votes) and ${take.community.name} (${voteScore}/${requiredCurrentVotes} votes)`
-      } else if (isVerifiedInCurrent) {
-        return `This take is verified in ${take.community.name} (${voteScore}/${requiredCurrentVotes} votes)`
-      }
-    }
-    return ''
-  }
+  // Set verification badge text to show total number of verified Kultures
+  const verificationBadgeText = verifiedCount > 0 ? `${verifiedCount}x` : ""
 
-  // Check if verified in both cultures
-  const isVerifiedInBoth = isVerifiedInCurrent && isVerifiedInParent
-
-  // Debug logs for tooltip
-  console.log('Tooltip details:', {
-    tooltipText: getTooltipText(),
-    isParentView,
-    isChildView,
-    isVerifiedInParent,
-    isVerifiedInCurrent,
-    isVerifiedInBoth,
-    communityName: take.community.name,
-    parentName: take.community.parent?.name,
-    voteScore,
-    requiredCurrentVotes,
-    requiredParentVotes
-  })
+  const userVoteType = take.userVote || null // Ensure userVote is never undefined
 
   return (
     <Card className="hover:border-foreground/10 transition-colors">
       <div className="flex">
         {/* Vote buttons */}
-        <div className="flex flex-col items-center justify-start px-2 py-4">
+        <div className="px-1">
           <VoteButtons
             takeId={take.id}
-            initialVotes={take.votes || []}
-            initialVoteScore={voteScore}
+            initialVoteType={take.userVote || null}
+            initialUpvotes={take._count.upvotes}
+            initialDownvotes={take._count.downvotes}
           />
         </div>
 
-        {/* Take content */}
-        <div className="flex-1 p-4 pt-2">
-          {/* Take metadata */}
-          <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-            <Link
-              href={`/k/${take.community.slug}`}
-              className="hover:text-foreground hover:underline flex items-center gap-1"
-            >
-              {take.community.parent ? (
-                <>
-                  <span className="text-muted-foreground">{take.community.parent.name}</span>
-                  <span className="text-muted-foreground mx-1">></span>
-                  <span>{take.community.name}</span>
-                </>
-              ) : (
-                take.community.name
-              )}
-            </Link>
-            <span>•</span>
-            <span>Shared by</span>
-            <UserAvatar
-              user={{
-                image: take.author.image,
-                username: take.author.username
-              }}
-              className="h-4 w-4"
-            />
-            <Link href={`/user/${take.author.id}`} className="hover:underline flex items-center gap-1">
-              @{take.author.username}
-              {take.author.verified && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger>
+        <div className="flex-1 p-4">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <UserAvatar user={take.author} />
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm font-medium">{take.author.name}</span>
+                    {take.author.verified && (
                       <CheckCircle2 className="h-4 w-4 text-blue-500" />
-                    </TooltipTrigger>
-                    <TooltipContent>Verified User</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-            </Link>
-            <span>•</span>
-            <span>{formatDistanceToNow(new Date(take.createdAt))} ago</span>
-            {checkmarkColor && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger>
-                    <div className="flex items-center">
-                      <CheckCircle2 className={cn("h-4 w-4", checkmarkColor)} />
-                      {isVerifiedInBoth && (
-                        <span className="ml-1 text-xs font-bold text-blue-500">2x</span>
-                      )}
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>{getTooltipText()}</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+                    )}
+                  </div>
+                  <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                    <span>@{take.author.username}</span>
+                    <span>·</span>
+                    <span>{formatDistanceToNow(new Date(take.createdAt))} ago</span>
+                    <span>·</span>
+                    <Link
+                      href={`/k/${take.community.slug}`}
+                      className="hover:text-foreground transition-colors"
+                    >
+                      {take.community.name}
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {isAuthor && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm">
+                    <MoreHorizontal className="h-4 w-4" />
+                    <span className="sr-only">More options</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <MoveTakeDialog
+                    takeId={take.id}
+                    currentKultureId={take.community.id}
+                    trigger={
+                      <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                        Move Take
+                      </DropdownMenuItem>
+                    }
+                  />
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem className="text-destructive">
+                    Delete Take
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </div>
 
-          {/* Take title */}
-          <Link href={`/take/${take.id}`}>
-            <h2 className="text-lg font-semibold leading-snug hover:underline flex items-center gap-2">
-              {take.title}
-            </h2>
-          </Link>
-
-          {/* Take content preview */}
-          {take.content && (
-            <p className="text-sm text-muted-foreground line-clamp-3">
-              {take.content}
-            </p>
-          )}
-
-          {/* Take actions */}
-          <div className="flex items-center space-x-4">
-            <Link
-              href={`/take/${take.id}`}
-              className="text-sm text-muted-foreground hover:text-foreground"
-            >
-              <span>{take._count?.comments || 0} comments</span>
+          {/* Content */}
+          <div className="mt-4">
+            <Link href={`/take/${take.id}`}>
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-semibold mb-2 hover:underline">
+                  {take.title}
+                </h2>
+                {checkmarkColor && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <div className="flex items-center gap-1">
+                          <CheckCircle2 className="h-5 w-5 text-blue-500" />
+                          {verificationBadgeText && (
+                            <span className="text-xs font-bold text-blue-500">{verificationBadgeText}</span>
+                          )}
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{getTooltipText()}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+              </div>
             </Link>
+            {take.content && (
+              <p className="text-muted-foreground whitespace-pre-wrap">
+                {take.content}
+              </p>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="mt-4 flex items-center justify-between">
+            <div className="flex items-center space-x-4 text-muted-foreground">
+              <Link
+                href={`/take/${take.id}`}
+                className="flex items-center space-x-2 hover:text-foreground transition-colors"
+              >
+                <MessageSquare className="h-4 w-4" />
+                <span>{take._count.comments} comments</span>
+              </Link>
+            </div>
+            {isAuthor && (
+              <div className="flex items-center space-x-2">
+                <MoveTakeDialog
+                  takeId={take.id}
+                  currentKultureId={take.community.id}
+                  trigger={
+                    <Button variant="outline" size="sm">
+                      Move to Different Kulture
+                    </Button>
+                  }
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>
     </Card>
   )
-} 
+}

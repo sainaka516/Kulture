@@ -61,6 +61,30 @@ async function getTakes() {
                     id: true,
                     name: true,
                     slug: true,
+                    parent: {
+                      select: {
+                        id: true,
+                        name: true,
+                        slug: true,
+                        parent: {
+                          select: {
+                            id: true,
+                            name: true,
+                            slug: true,
+                            _count: {
+                              select: {
+                                members: true
+                              }
+                            }
+                          }
+                        },
+                        _count: {
+                          select: {
+                            members: true
+                          }
+                        }
+                      }
+                    },
                     _count: {
                       select: {
                         members: true
@@ -113,6 +137,42 @@ async function getTakes() {
                 id: true,
                 name: true,
                 slug: true,
+                parent: {
+                  select: {
+                    id: true,
+                    name: true,
+                    slug: true,
+                    parent: {
+                      select: {
+                        id: true,
+                        name: true,
+                        slug: true,
+                        parent: {
+                          select: {
+                            id: true,
+                            name: true,
+                            slug: true,
+                            _count: {
+                              select: {
+                                members: true
+                              }
+                            }
+                          }
+                        },
+                        _count: {
+                          select: {
+                            members: true
+                          }
+                        }
+                      }
+                    },
+                    _count: {
+                      select: {
+                        members: true
+                      }
+                    }
+                  }
+                },
                 _count: {
                   select: {
                     members: true
@@ -150,6 +210,20 @@ async function getTakes() {
         },
         parent: take.community.parent ? {
           ...take.community.parent,
+          parent: take.community.parent.parent ? {
+            ...take.community.parent.parent,
+            parent: take.community.parent.parent.parent ? {
+              ...take.community.parent.parent.parent,
+              _count: {
+                ...take.community.parent.parent.parent._count,
+                members: take.community.parent.parent.parent._count?.members || 0
+              }
+            } : null,
+            _count: {
+              ...take.community.parent.parent._count,
+              members: take.community.parent.parent._count?.members || 0
+            }
+          } : null,
           _count: {
             ...take.community.parent._count,
             members: take.community.parent._count?.members || 0

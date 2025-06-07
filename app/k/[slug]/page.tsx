@@ -5,6 +5,37 @@ import CommunityClient from './community-client'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 
+// Get all descendant IDs using a recursive CTE query
+async function getAllDescendantIds(communityId: string): Promise<string[]> {
+  console.log('🔍 Getting descendants for community:', communityId)
+  
+  try {
+    // Use Prisma's $queryRaw to execute a recursive CTE query
+    const result = await prisma.$queryRaw<Array<{ id: string }>>`
+      WITH RECURSIVE descendants AS (
+        -- Base case: direct children
+        SELECT id, name, "parentId", 1 as level
+        FROM "Community"
+        WHERE "parentId" = ${communityId}
+        
+        UNION ALL
+        
+        -- Recursive case: children of children
+        SELECT c.id, c.name, c."parentId", d.level + 1
+        FROM "Community" c
+        INNER JOIN descendants d ON c."parentId" = d.id
+      )
+      SELECT DISTINCT id FROM descendants;
+    `
+
+    console.log('✅ Found descendants:', result)
+    return result.map(r => r.id)
+  } catch (error) {
+    console.error('❌ Error finding descendants:', error)
+    throw error
+  }
+}
+
 interface CommunityPageProps {
   params: {
     slug: string
@@ -23,8 +54,8 @@ export async function generateMetadata({ params }: CommunityPageProps): Promise<
   if (!community) return {}
 
   return {
-    title: `k/${community.name} - Kulture`,
-    description: community.description || `Welcome to k/${community.name} on Kulture`,
+    title: `${community.name} - Kulture`,
+    description: community.description || `Welcome to ${community.name} on Kulture`,
   }
 }
 
@@ -52,6 +83,19 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
           name: true,
           slug: true,
           description: true,
+          children: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              _count: {
+                select: {
+                  members: true,
+                  takes: true
+                }
+              }
+            }
+          },
           _count: {
             select: {
               members: true,
@@ -74,11 +118,20 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
     name: community.name,
     isParent: !community.parent,
     childrenCount: community.children.length,
-    childIds: community.children.map(c => c.id)
+    children: community.children.map(c => ({
+      name: c.name,
+      grandchildren: c.children?.map(gc => gc.name)
+    }))
   })
 
-  // Get all child community IDs
-  const childIds = community.children.map(child => child.id)
+  // Get all descendant community IDs using recursive CTE
+  const descendantIds = await getAllDescendantIds(community.id)
+  const allRelevantIds = [community.id, ...descendantIds]
+
+  console.log('Will fetch takes from communities:', {
+    currentKulture: community.name,
+    communityIds: allRelevantIds
+  })
   
   // Get the full community data including takes
   const fullCommunity = await prisma.community.findUnique({
@@ -134,13 +187,10 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
     notFound()
   }
 
-  // Fetch takes separately to include both parent and child takes
+  // Fetch takes from parent and all descendants
   const takes = await prisma.take.findMany({
     where: {
-      OR: [
-        { communityId: community.id },
-        { communityId: { in: childIds } }
-      ]
+      communityId: { in: allRelevantIds }
     },
     include: {
       author: {
@@ -162,6 +212,18 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
               id: true,
               name: true,
               slug: true,
+              parent: {
+                select: {
+                  id: true,
+                  name: true,
+                  slug: true,
+                  _count: {
+                    select: {
+                      members: true
+                    }
+                  }
+                }
+              },
               _count: {
                 select: {
                   members: true
@@ -179,15 +241,26 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
       votes: true,
       _count: {
         select: {
-          comments: true,
-          votes: true
+          comments: true
         }
       }
-    },
-    orderBy: {
-      createdAt: 'desc'
     }
   })
+
+  // Log the takes we found grouped by community
+  const takesByKulture = takes.reduce((acc, take) => {
+    const kultureName = take.community.name
+    if (!acc[kultureName]) {
+      acc[kultureName] = []
+    }
+    acc[kultureName].push({
+      id: take.id,
+      title: take.title
+    })
+    return acc
+  }, {} as Record<string, Array<{ id: string, title: string }>>)
+
+  console.log('Takes found by Kulture:', takesByKulture)
 
   // Get the current user's session
   const session = await getServerSession(authOptions)
@@ -198,21 +271,13 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
     _count: {
       ...take._count,
       upvotes: take.votes.filter(vote => vote.type === 'UP').length,
-      downvotes: take.votes.filter(vote => vote.type === 'DOWN').length
+      downvotes: take.votes.filter(vote => vote.type === 'DOWN').length,
     },
     currentUserId: session?.user?.id,
-    userVote: session?.user?.id 
+    userVote: session?.user?.id
       ? take.votes.find(vote => vote.userId === session.user.id)?.type || null
       : null
   }))
 
-  // Return the client component with the full community data
-  return (
-    <CommunityClient
-      community={{
-        ...fullCommunity,
-        takes: transformedTakes
-      }}
-    />
-  )
+  return <CommunityClient community={{ ...fullCommunity, takes: transformedTakes }} />
 } 

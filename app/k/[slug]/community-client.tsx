@@ -98,6 +98,23 @@ export default function CommunityClient({ community }: CommunityClientProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [isMember, setIsMember] = useState(false)
 
+  console.log('Community page data:', {
+    name: community.name,
+    id: community.id,
+    parent: community.parent?.name,
+    childrenCount: community.children.length,
+    children: community.children.map(c => ({
+      name: c.name,
+      grandchildren: c.children?.map(gc => gc.name)
+    })),
+    takesCount: community.takes.length,
+    takes: community.takes.map(t => ({
+      id: t.id,
+      title: t.title,
+      community: t.community?.name
+    }))
+  })
+
   useEffect(() => {
     const checkMembership = async () => {
       if (!session?.user) return
@@ -278,9 +295,21 @@ export default function CommunityClient({ community }: CommunityClientProps) {
           {/* Associated Kultures */}
           {community.children.length > 0 && (
             <Card className="p-6">
-              <h2 className="text-lg font-semibold mb-4">Associated Kultures</h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold">Associated Kultures</h2>
+                <Link href={`/k/${community.slug}/associated`}>
+                  <Button variant="ghost" size="sm" className="text-sm">
+                    View All
+                  </Button>
+                </Link>
+              </div>
               <div className="space-y-2">
-                <KultureGrid kultures={community.children} />
+                <KultureGrid kultures={community.children.slice(0, 3)} />
+                {community.children.length > 3 && (
+                  <p className="text-sm text-muted-foreground text-center mt-4">
+                    And {community.children.length - 3} more associated kultures...
+                  </p>
+                )}
               </div>
             </Card>
           )}

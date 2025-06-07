@@ -8,35 +8,28 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
 
-interface Vote {
-  type: 'UP' | 'DOWN'
-  userId: string
-}
-
 interface VoteButtonsProps {
   takeId: string
-  initialVotes: Vote[]
-  initialVoteScore: number
+  initialVoteType: 'UP' | 'DOWN' | null
+  initialUpvotes: number
+  initialDownvotes: number
   className?: string
 }
 
 export default function VoteButtons({
   takeId,
-  initialVotes = [],
-  initialVoteScore = 0,
+  initialVoteType,
+  initialUpvotes,
+  initialDownvotes,
   className,
 }: VoteButtonsProps) {
   const { data: session } = useSession()
   const { toast } = useToast()
   const router = useRouter()
-  const [votes, setVotes] = useState<Vote[]>(initialVotes)
-  const [voteScore, setVoteScore] = useState(initialVoteScore)
   const [isLoading, setIsLoading] = useState(false)
-
-  // Get the user's current vote if they have voted
-  const userVote = session?.user
-    ? votes.find((vote) => vote.userId === session.user.id)
-    : null
+  const [userVote, setUserVote] = useState<'UP' | 'DOWN' | null>(initialVoteType)
+  const [upvotes, setUpvotes] = useState(initialUpvotes)
+  const [downvotes, setDownvotes] = useState(initialDownvotes)
 
   async function vote(type: 'UP' | 'DOWN') {
     if (!session) {
@@ -61,18 +54,18 @@ export default function VoteButtons({
       }
 
       const data = await response.json()
-      setVotes(data.votes)
+      
+      // Update local state based on the response
+      const newUpvotes = data.votes.filter((v: any) => v.type === 'UP').length
+      const newDownvotes = data.votes.filter((v: any) => v.type === 'DOWN').length
+      const newUserVote = data.votes.find((v: any) => v.userId === session.user.id)?.type || null
 
-      // Recalculate vote score
-      const newScore = data.votes.reduce((acc: number, vote: Vote) => {
-        if (vote.type === 'UP') return acc + 1
-        if (vote.type === 'DOWN') return acc - 1
-        return acc
-      }, 0)
-      setVoteScore(newScore)
+      setUpvotes(newUpvotes)
+      setDownvotes(newDownvotes)
+      setUserVote(newUserVote)
 
       // Create notification for the take's author
-      const isRemovingVote = userVote?.type === type
+      const isRemovingVote = userVote === type
       if (!isRemovingVote) {
         try {
           await fetch('/api/notifications', {
@@ -114,12 +107,12 @@ export default function VoteButtons({
         }}
         className={cn(
           'flex items-center gap-2',
-          userVote?.type === 'UP' && 'bg-purple-600 hover:bg-purple-700 text-white'
+          userVote === 'UP' && 'bg-purple-600 hover:bg-purple-700 text-white'
         )}
         disabled={isLoading}
       >
         <ThumbsUp className="h-4 w-4" />
-        <span>{votes.filter(vote => vote.type === 'UP').length}</span>
+        <span>{upvotes}</span>
       </Button>
       <Button
         variant="outline"
@@ -130,12 +123,12 @@ export default function VoteButtons({
         }}
         className={cn(
           'flex items-center gap-2',
-          userVote?.type === 'DOWN' && 'bg-red-600 hover:bg-red-700 text-white'
+          userVote === 'DOWN' && 'bg-red-600 hover:bg-red-700 text-white'
         )}
         disabled={isLoading}
       >
         <ThumbsDown className="h-4 w-4" />
-        <span>{votes.filter(vote => vote.type === 'DOWN').length}</span>
+        <span>{downvotes}</span>
       </Button>
     </div>
   )

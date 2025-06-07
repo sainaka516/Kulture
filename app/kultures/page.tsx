@@ -56,7 +56,7 @@ export default async function KulturesPage() {
         <div>
           <h1 className="text-3xl font-bold">Kultures</h1>
           <p className="text-muted-foreground mt-2">
-            Browse and join communities that interest you
+            Browse and join Kultures that interest you
           </p>
         </div>
         <Link href="/create-kulture">

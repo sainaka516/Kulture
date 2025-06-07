@@ -69,7 +69,9 @@ export default function CreateKulture() {
     const title = formData.get('title') as string
     const description = formData.get('description') as string
     const rules = formData.get('rules') as string
-    const parentId = formData.get('parentId') as string || selectedParentId || null
+    const formParentId = formData.get('parentId') as string
+    // Only use parentId if it's explicitly set (either through form or URL param)
+    const parentId = parentSlug ? selectedParentId : (formParentId === 'none' ? null : formParentId || null)
 
     // Create slug from name
     const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-')
@@ -189,8 +191,8 @@ export default function CreateKulture() {
           <Label htmlFor="parentId">Parent Kulture</Label>
           <Select 
             name="parentId" 
-            value={selectedParentId || ''} 
-            onValueChange={setSelectedParentId}
+            value={selectedParentId || 'none'} 
+            onValueChange={(value) => setSelectedParentId(value === 'none' ? null : value)}
             disabled={!!parentSlug}
           >
             <SelectTrigger>
@@ -199,9 +201,10 @@ export default function CreateKulture() {
             <SelectContent>
               <SelectGroup>
                 <SelectLabel>Available Kultures</SelectLabel>
+                <SelectItem value="none">No Parent (Top-Level Kulture)</SelectItem>
                 {parentCommunities.map((community) => (
                   <SelectItem key={community.id} value={community.id}>
-                    {community.name}
+                    {community.displayName}
                   </SelectItem>
                 ))}
               </SelectGroup>
