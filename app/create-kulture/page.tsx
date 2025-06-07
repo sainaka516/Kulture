@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -22,21 +22,31 @@ import { Label } from '@/components/ui/label'
 
 export default function CreateKulture() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const parentSlug = searchParams.get('parent')
   const { data: session, status } = useSession()
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
   const [parentCommunities, setParentCommunities] = useState<any[]>([])
+  const [selectedParentId, setSelectedParentId] = useState<string | null>(null)
 
   const fetchCommunities = useCallback(() => {
     fetch('/api/communities')
       .then((response) => response.json())
       .then((data) => {
         setParentCommunities(data)
+        // If we have a parent slug, find and select the matching community
+        if (parentSlug) {
+          const parentCommunity = data.find((c: any) => c.slug === parentSlug)
+          if (parentCommunity) {
+            setSelectedParentId(parentCommunity.id)
+          }
+        }
       })
       .catch((error) => {
         console.error('Failed to fetch communities:', error)
       })
-  }, [])
+  }, [parentSlug])
 
   // Fetch existing communities for parent selection
   useEffect(() => {
@@ -59,7 +69,7 @@ export default function CreateKulture() {
     const title = formData.get('title') as string
     const description = formData.get('description') as string
     const rules = formData.get('rules') as string
-    const parentId = formData.get('parentId') as string || null
+    const parentId = formData.get('parentId') as string || selectedParentId || null
 
     // Create slug from name
     const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-')
@@ -117,9 +127,14 @@ export default function CreateKulture() {
   return (
     <div className="container max-w-2xl py-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-foreground">Create a Kulture</h1>
+        <h1 className="text-2xl font-bold text-foreground">
+          {parentSlug ? 'Create Associated Kulture' : 'Create a Kulture'}
+        </h1>
         <p className="text-muted-foreground">
-          Create a new community for people to share and discuss takes
+          {parentSlug 
+            ? `Create a new kulture that will be associated with ${parentCommunities.find((c: any) => c.slug === parentSlug)?.name || 'the selected kulture'}`
+            : 'Create a new community for people to share and discuss takes'
+          }
         </p>
       </div>
 
@@ -172,9 +187,14 @@ export default function CreateKulture() {
 
         <div className="space-y-2">
           <Label htmlFor="parentId">Parent Kulture</Label>
-          <Select name="parentId">
+          <Select 
+            name="parentId" 
+            value={selectedParentId || ''} 
+            onValueChange={setSelectedParentId}
+            disabled={!!parentSlug}
+          >
             <SelectTrigger>
-              <SelectValue placeholder="Optional: Choose a parent kulture" />
+              <SelectValue placeholder={parentSlug ? 'Parent kulture selected' : 'Optional: Choose a parent kulture'} />
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
@@ -188,7 +208,10 @@ export default function CreateKulture() {
             </SelectContent>
           </Select>
           <p className="text-sm text-muted-foreground">
-            Optional: Make this a sub-community of an existing kulture
+            {parentSlug 
+              ? `This kulture will be associated with "${parentCommunities.find((c: any) => c.slug === parentSlug)?.name || 'the selected kulture'}"`
+              : 'Optional: Associate this kulture with an existing one to create a hierarchy'
+            }
           </p>
         </div>
 

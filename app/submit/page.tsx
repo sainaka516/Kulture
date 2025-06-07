@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useEffect, useState, useCallback } from 'react'
 import { Card } from '@/components/ui/card'
@@ -20,10 +20,13 @@ import { Label } from '@/components/ui/label'
 
 export default function SubmitPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const selectedKultureId = searchParams.get('kulture')
   const { data: session, status } = useSession()
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
   const [communities, setCommunities] = useState<any[]>([])
+  const [selectedCommunityId, setSelectedCommunityId] = useState<string | null>(selectedKultureId)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -122,7 +125,12 @@ export default function SubmitPage() {
           <form onSubmit={onSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="communityId">Choose a Kulture</Label>
-              <Select name="communityId" required>
+              <Select 
+                name="communityId" 
+                required
+                value={selectedCommunityId || ''}
+                onValueChange={setSelectedCommunityId}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select a kulture" />
                 </SelectTrigger>

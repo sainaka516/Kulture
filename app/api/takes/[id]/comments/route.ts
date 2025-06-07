@@ -32,7 +32,9 @@ export async function POST(
           select: {
             id: true,
             name: true,
+            username: true,
             image: true,
+            verified: true,
           },
         },
       },

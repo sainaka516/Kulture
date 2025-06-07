@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { ArrowBigUp, ArrowBigDown } from 'lucide-react'
+import { ThumbsUp, ThumbsDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
@@ -38,74 +38,91 @@ export default function VoteButtons({
     ? votes.find((vote) => vote.userId === session.user.id)
     : null
 
-  function vote(type: 'UP' | 'DOWN') {
+  async function vote(type: 'UP' | 'DOWN') {
     if (!session) {
       router.push('/sign-in')
       return
     }
 
+    if (isLoading) return
+
     setIsLoading(true)
-    fetch(`/api/takes/${takeId}/vote`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ type }),
-    })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error('Failed to vote')
-        }
-        return response.json()
+    try {
+      const response = await fetch(`/api/takes/${takeId}/vote`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ type }),
       })
-      .then((data) => {
-        setVotes(data.votes)
-        // Recalculate vote score
-        const newScore = data.votes.reduce((acc: number, vote: Vote) => {
-          if (vote.type === 'UP') return acc + 1
-          if (vote.type === 'DOWN') return acc - 1
-          return acc
-        }, 0)
-        setVoteScore(newScore)
-      })
-      .catch((error) => {
+
+      if (!response.ok) {
+        throw new Error('Failed to vote')
+      }
+
+      const data = await response.json()
+      setVotes(data.votes)
+
+      // Recalculate vote score
+      const newScore = data.votes.reduce((acc: number, vote: Vote) => {
+        if (vote.type === 'UP') return acc + 1
+        if (vote.type === 'DOWN') return acc - 1
+        return acc
+      }, 0)
+      setVoteScore(newScore)
+
+      // Show success message only if the vote was added or changed
+      const isRemovingVote = userVote?.type === type
+      if (!isRemovingVote) {
         toast({
-          title: 'Error',
-          description: 'Failed to vote. Please try again.',
-          variant: 'destructive',
+          title: 'Success',
+          description: `You ${type === 'UP' ? 'agreed with' : 'disagreed with'} this take`,
         })
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to vote. Please try again.',
+        variant: 'destructive',
       })
-      .finally(() => {
-        setIsLoading(false)
-      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
-    <div className={cn('flex flex-col items-center gap-2', className)}>
+    <div className={cn('flex items-center gap-4', className)}>
       <Button
-        variant="ghost"
-        size="icon"
+        variant="outline"
+        size="sm"
+        onClick={(e) => {
+          e.stopPropagation()
+          vote('UP')
+        }}
         className={cn(
-          'h-6 w-6',
-          userVote?.type === 'UP' && 'text-purple-900 dark:text-purple-400'
+          'flex items-center gap-2',
+          userVote?.type === 'UP' && 'bg-purple-600 hover:bg-purple-700 text-white'
         )}
         disabled={isLoading}
-        onClick={() => vote('UP')}
       >
-        <ArrowBigUp className="h-5 w-5" />
+        <ThumbsUp className="h-4 w-4" />
+        <span>{votes.filter(vote => vote.type === 'UP').length}</span>
       </Button>
-      <p className="text-center text-sm font-medium">{voteScore}</p>
       <Button
-        variant="ghost"
-        size="icon"
+        variant="outline"
+        size="sm"
+        onClick={(e) => {
+          e.stopPropagation()
+          vote('DOWN')
+        }}
         className={cn(
-          'h-6 w-6',
-          userVote?.type === 'DOWN' && 'text-purple-900 dark:text-purple-400'
+          'flex items-center gap-2',
+          userVote?.type === 'DOWN' && 'bg-red-600 hover:bg-red-700 text-white'
         )}
         disabled={isLoading}
-        onClick={() => vote('DOWN')}
       >
-        <ArrowBigDown className="h-5 w-5" />
+        <ThumbsDown className="h-4 w-4" />
+        <span>{votes.filter(vote => vote.type === 'DOWN').length}</span>
       </Button>
     </div>
   )

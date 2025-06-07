@@ -1,205 +1,123 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { useSession } from 'next-auth/react'
-import { Button } from '@/components/ui/button'
-import { Loader2, Flame, Clock, TrendingUp } from 'lucide-react'
-import { useToast } from '@/hooks/use-toast'
+import { useState, useEffect } from 'react'
+import { useSearchParams, usePathname } from 'next/navigation'
+import Link from 'next/link'
+import SwipeableTakeFeed from './SwipeableTakeFeed'
 import TakeCard from '@/components/TakeCard'
-
-interface Take {
-  id: string
-  title: string
-  content: string | null
-  createdAt: Date
-  author: {
-    id: string
-    name: string | null
-    image: string | null
-  }
-  community: {
-    id: string
-    name: string
-    slug: string
-    parent?: {
-      id: string
-      name: string
-      slug: string
-    } | null
-  }
-  votes: {
-    type: 'UP' | 'DOWN'
-    userId: string
-  }[]
-  _count?: {
-    comments: number
-  }
-}
+import { Take } from '@/lib/types'
+import { Loader2 } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface TakeFeedProps {
   initialTakes: Take[]
   communityId?: string
-  communitySlug?: string
+  communitySlug: string | null
+  onTakeViewed?: (takeId: string) => void
 }
 
-export default function TakeFeed({ initialTakes, communityId, communitySlug }: TakeFeedProps) {
-  const { data: session } = useSession()
-  const { toast } = useToast()
-  const [takes, setTakes] = useState<Take[]>(initialTakes)
-  const [isLoading, setIsLoading] = useState(false)
-  const router = useRouter()
+export default function TakeFeed({
+  initialTakes = [],
+  communityId,
+  communitySlug,
+  onTakeViewed,
+}: TakeFeedProps) {
+  const pathname = usePathname()
   const searchParams = useSearchParams()
-  const sort = searchParams.get('sort') || 'hot'
+  const view = searchParams.get('view') || 'swipe'
 
-  const fetchTakes = useCallback(() => {
-    setIsLoading(true)
-    fetch(
-      communitySlug
-        ? `/api/k/${communitySlug}/takes`
-        : `/api/takes`
-    )
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error('Failed to fetch takes')
-        }
-        return response.json()
-      })
-      .then((data) => {
-        setTakes(data)
-      })
-      .catch((error) => {
-        toast({
-          title: 'Error',
-          description: 'Failed to fetch takes. Please try again.',
-          variant: 'destructive',
-        })
-      })
-      .finally(() => {
-        setIsLoading(false)
-      })
-  }, [communitySlug, toast])
+  const [takes, setTakes] = useState<Take[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    if (communitySlug) {
-      fetchTakes()
-    }
-  }, [communitySlug, fetchTakes])
+    setTakes(initialTakes)
+    setIsLoading(false)
+  }, [initialTakes])
 
-  useEffect(() => {
-    fetchTakes()
-  }, [session, fetchTakes])
-
-  const handleSortChange = (newSort: string) => {
-    const params = new URLSearchParams(searchParams)
-    params.set('sort', newSort)
-    router.push(`?${params.toString()}`)
-    fetchTakes()
+  // Create URLs for each view
+  const createViewUrl = (viewType: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('view', viewType)
+    return `${pathname}?${params.toString()}`
   }
 
-  // Group takes by community
-  const groupedTakes = takes.reduce((acc, take) => {
-    const communityId = take.community.id
-    if (!acc[communityId]) {
-      acc[communityId] = []
+  // Handle take viewed
+  const handleTakeViewed = (takeId: string) => {
+    if (onTakeViewed) {
+      onTakeViewed(takeId)
+      // Remove the viewed take from the list if we're in explore mode
+      if (!communitySlug) {
+        setTakes(prev => prev.filter(take => take.id !== takeId))
+      }
     }
-    acc[communityId].push(take)
-    return acc
-  }, {} as Record<string, Take[]>)
-
-  // Sort communities to show parent first, then children
-  const sortedCommunityIds = Object.keys(groupedTakes).sort((a, b) => {
-    const communityA = takes.find(t => t.community.id === a)?.community
-    const communityB = takes.find(t => t.community.id === b)?.community
-    if (communityA?.parent && !communityB?.parent) return 1
-    if (!communityA?.parent && communityB?.parent) return -1
-    return 0
-  })
+  }
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <div className="rounded-lg border p-4">
-          <div className="flex items-center space-x-2">
-            <div className="h-10 w-10 animate-pulse rounded-full bg-muted" />
-            <div className="space-y-2">
-              <div className="h-4 w-[200px] animate-pulse rounded bg-muted" />
-              <div className="h-4 w-[150px] animate-pulse rounded bg-muted" />
-            </div>
-          </div>
-        </div>
+      <div className="flex justify-center py-6">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (!takes.length) {
+    return (
+      <div className="text-center py-6">
+        <p className="text-muted-foreground">No takes available. Check back later!</p>
       </div>
     )
   }
 
   return (
     <div className="space-y-4">
-      {/* Sorting options */}
-      <div className="flex space-x-2 border-b border-border pb-2">
-        <Button
-          variant={sort === 'hot' ? 'default' : 'ghost'}
-          size="sm"
-          onClick={() => handleSortChange('hot')}
-          className="gap-2"
-        >
-          <Flame className="h-4 w-4" />
-          Hot
-        </Button>
-        <Button
-          variant={sort === 'new' ? 'default' : 'ghost'}
-          size="sm"
-          onClick={() => handleSortChange('new')}
-          className="gap-2"
-        >
-          <Clock className="h-4 w-4" />
-          New
-        </Button>
-        <Button
-          variant={sort === 'top' ? 'default' : 'ghost'}
-          size="sm"
-          onClick={() => handleSortChange('top')}
-          className="gap-2"
-        >
-          <TrendingUp className="h-4 w-4" />
-          Top
-        </Button>
-      </div>
+      {/* Only show view switching buttons on kulture pages */}
+      {communitySlug && (
+        <div className="flex justify-center gap-2 mb-6">
+          <Link
+            href={createViewUrl('swipe')}
+            className={cn(
+              "px-4 py-2 rounded-md font-medium transition-colors",
+              view === 'swipe'
+                ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                : "border border-input bg-background hover:bg-accent hover:text-accent-foreground"
+            )}
+          >
+            Swipe View
+          </Link>
+          <Link
+            href={createViewUrl('list')}
+            className={cn(
+              "px-4 py-2 rounded-md font-medium transition-colors",
+              view === 'list'
+                ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                : "border border-input bg-background hover:bg-accent hover:text-accent-foreground"
+            )}
+          >
+            List View
+          </Link>
+        </div>
+      )}
 
-      {/* Takes list */}
-      <div className="space-y-6">
-        {sortedCommunityIds.map((communityId) => {
-          const communityTakes = groupedTakes[communityId]
-          const firstTake = communityTakes[0]
-          const isChildCommunity = firstTake.community.parent !== null
-
-          return (
-            <div key={communityId} className="space-y-4">
-              {isChildCommunity && communitySlug && (
-                <div className="flex items-center gap-2 px-4 py-2 bg-muted/50 rounded-lg">
-                  <h3 className="text-sm font-medium">
-                    Takes from {firstTake.community.name}
-                  </h3>
-                </div>
-              )}
-              {communityTakes.map((take) => (
-                <TakeCard 
-                  key={take.id} 
-                  take={take} 
-                  currentKultureSlug={communitySlug}
-                />
-              ))}
-            </div>
-          )
-        })}
-        {takes.length === 0 && (
-          <div className="rounded-lg border p-8 text-center">
-            <h2 className="text-lg font-semibold">No takes yet</h2>
-            <p className="text-sm text-muted-foreground">
-              Be the first to share a take in this community!
-            </p>
-          </div>
-        )}
-      </div>
+      {/* Always use swipe view on explore page, otherwise respect the view preference */}
+      {!communitySlug || view === 'swipe' ? (
+        <SwipeableTakeFeed
+          initialTakes={takes}
+          communityId={communityId}
+          communitySlug={communitySlug}
+          onTakeViewed={handleTakeViewed}
+        />
+      ) : (
+        <div className="space-y-4">
+          {takes.map((take) => (
+            <TakeCard
+              key={take.id}
+              take={take}
+              currentKultureSlug={communitySlug}
+              onViewed={() => handleTakeViewed(take.id)}
+            />
+          ))}
+        </div>
+      )}
     </div>
   )
 } 

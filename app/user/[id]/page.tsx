@@ -61,7 +61,9 @@ export default async function UserProfilePage({ params }: PageProps) {
             select: {
               id: true,
               name: true,
+              username: true,
               image: true,
+              verified: true,
             },
           },
           community: {

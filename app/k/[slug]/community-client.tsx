@@ -9,6 +9,9 @@ import { useSession } from 'next-auth/react'
 import { useToast } from '@/hooks/use-toast'
 import Link from 'next/link'
 import KultureGrid from '@/components/KultureGrid'
+import { Card } from '@/components/ui/card'
+import { Users, MessageSquare, Layers } from 'lucide-react'
+import MembersList from '@/components/MembersList'
 
 interface CommunityClientProps {
   community: {
@@ -24,6 +27,9 @@ interface CommunityClientProps {
     parent?: {
       name: string
       slug: string
+      _count?: {
+        members: number
+      }
     } | null
     children: Array<{
       id: string
@@ -44,12 +50,25 @@ interface CommunityClientProps {
       author: {
         id: string
         name: string | null
+        username: string
         image: string | null
+        verified: boolean
       }
       community: {
         id: string
         name: string
         slug: string
+        parent?: {
+          id: string
+          name: string
+          slug: string
+          _count?: {
+            members: number
+          }
+        } | null
+        _count?: {
+          members: number
+        }
       }
       votes: Array<{
         id: string
@@ -58,7 +77,11 @@ interface CommunityClientProps {
       }>
       _count: {
         comments: number
+        upvotes: number
+        downvotes: number
       }
+      currentUserId?: string
+      userVote?: 'UP' | 'DOWN' | null
     }>
     _count: {
       members: number
@@ -69,125 +92,145 @@ interface CommunityClientProps {
 }
 
 export default function CommunityClient({ community }: CommunityClientProps) {
-  const router = useRouter()
   const { data: session } = useSession()
+  const router = useRouter()
   const { toast } = useToast()
-  const [isJoining, setIsJoining] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
   const [isMember, setIsMember] = useState(false)
 
   useEffect(() => {
-    if (session?.user?.id) {
-      // Check if user is already a member
-      fetch(`/api/k/${community.slug}/membership`)
-        .then((res) => res.json())
-        .then((data) => {
+    const checkMembership = async () => {
+      if (!session?.user) return
+
+      try {
+        const response = await fetch(`/api/k/${community.slug}/membership`)
+        if (response.ok) {
+          const data = await response.json()
           setIsMember(data.isMember)
-        })
-        .catch((error) => {
-          console.error('Error checking membership:', error)
-        })
+        }
+      } catch (error) {
+        console.error('Failed to check membership:', error)
+      }
     }
-  }, [session?.user?.id, community.slug])
 
-  function joinCommunity() {
+    checkMembership()
+  }, [session, community.slug])
+
+  const isParentCommunity = !community.parent
+  const title = isParentCommunity ? (
+    community.name
+  ) : (
+    <div className="flex items-center gap-2">
+      <Link 
+        href={`/k/${community.parent.slug}`}
+        className="text-muted-foreground hover:text-foreground transition-colors"
+      >
+        {community.parent.name}
+      </Link>
+      <span className="text-muted-foreground">›</span>
+      <span>{community.name}</span>
+    </div>
+  )
+
+  const handleJoinOrLeave = async () => {
     if (!session) {
-      router.push('/sign-in')
+      toast({
+        title: 'Sign in required',
+        description: 'You must be signed in to join communities.',
+        variant: 'destructive',
+      })
       return
     }
 
-    setIsJoining(true)
-    fetch(`/api/k/${community.slug}/join`, {
-      method: 'POST',
-    })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error('Failed to join community')
-        }
-        return response.json()
-      })
-      .then(() => {
-        toast({
-          title: 'Success',
-          description: `You have joined ${community.name}`,
-        })
-        setIsMember(true)
-      })
-      .catch((error) => {
-        toast({
-          title: 'Error',
-          description: 'Something went wrong. Please try again.',
-          variant: 'destructive',
-        })
-      })
-      .finally(() => {
-        setIsJoining(false)
-      })
-  }
+    setIsLoading(true)
 
-  function leaveCommunity() {
-    if (!session) {
-      router.push('/sign-in')
-      return
+    try {
+      const endpoint = isMember ? 'leave' : 'join'
+      const response = await fetch(`/api/k/${community.slug}/${endpoint}`, {
+        method: 'POST',
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to ${isMember ? 'leave' : 'join'} community`)
+      }
+
+      setIsMember(!isMember)
+      toast({
+        title: 'Success',
+        description: `You have ${isMember ? 'left' : 'joined'} the community.`,
+      })
+
+      router.refresh()
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: `Failed to ${isMember ? 'leave' : 'join'} community. Please try again.`,
+        variant: 'destructive',
+      })
+    } finally {
+      setIsLoading(false)
     }
-
-    setIsJoining(true)
-    fetch(`/api/k/${community.slug}/leave`, {
-      method: 'POST',
-    })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error('Failed to leave community')
-        }
-        return response.json()
-      })
-      .then(() => {
-        toast({
-          title: 'Success',
-          description: `You have left ${community.name}`,
-        })
-        setIsMember(false)
-      })
-      .catch((error) => {
-        toast({
-          title: 'Error',
-          description: 'Something went wrong. Please try again.',
-          variant: 'destructive',
-        })
-      })
-      .finally(() => {
-        setIsJoining(false)
-      })
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          {community.parent ? (
-            <div className="flex items-center gap-2 mb-1">
-              <Link
-                href={`/k/${community.parent.slug}`}
-                className="text-sm text-muted-foreground hover:text-foreground flex items-center"
-              >
-                {community.parent.name}
-                <span className="mx-2 text-muted-foreground">></span>
-              </Link>
+    <div className="container max-w-6xl py-6">
+      <div className="mb-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">{title}</h1>
+            {community.description && (
+              <p className="mt-2 text-muted-foreground">{community.description}</p>
+            )}
+          </div>
+          <div className="flex items-center gap-4">
+            <Button 
+              onClick={handleJoinOrLeave} 
+              disabled={isLoading}
+              variant={isMember ? "outline" : "default"}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {isMember ? 'Leaving...' : 'Joining...'}
+                </>
+              ) : (
+                isMember ? 'Leave Community' : 'Join Community'
+              )}
+            </Button>
+            <Link href={`/create-kulture?parent=${community.slug}`}>
+              <Button variant="outline">
+                Create Associated Kulture
+              </Button>
+            </Link>
+            <Link href={`/submit?kulture=${community.id}`}>
+              <Button>Share Take</Button>
+            </Link>
+          </div>
+        </div>
+
+        {/* Community Stats */}
+        <div className="mt-6 flex items-center gap-6 text-sm text-muted-foreground">
+          <MembersList 
+            communityName={community.name}
+            memberCount={community._count.members}
+            slug={community.slug}
+          />
+          <div className="flex items-center gap-2">
+            <MessageSquare className="h-4 w-4" />
+            <span>{community._count.takes} takes</span>
+          </div>
+          {community._count.children > 0 && (
+            <div className="flex items-center gap-2">
+              <Layers className="h-4 w-4" />
+              <span>{community._count.children} associated kultures</span>
             </div>
-          ) : null}
-          <h1 className="text-2xl font-bold">{community.name}</h1>
-          {community.description && (
-            <p className="text-muted-foreground mt-1">{community.description}</p>
           )}
         </div>
-        <Button onClick={() => router.push('/submit')}>Share Take</Button>
       </div>
 
-      {community.children.length > 0 && (
-        <KultureGrid kultures={community.children} />
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="md:col-span-3">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Main Content */}
+        <div className="lg:col-span-3">
           <Suspense
             fallback={
               <div className="flex justify-center py-6">
@@ -203,47 +246,42 @@ export default function CommunityClient({ community }: CommunityClientProps) {
           </Suspense>
         </div>
 
-        <div className="space-y-4">
-          <div className="rounded-lg border p-4">
+        {/* Sidebar */}
+        <div className="space-y-6">
+          {/* About Section */}
+          <Card className="p-6">
             <h2 className="font-semibold mb-4">About {community.name}</h2>
             <dl className="space-y-4">
               <div>
-                <dt className="text-muted-foreground">Created by</dt>
+                <dt className="text-sm text-muted-foreground">Created by</dt>
                 <dd className="font-medium">{community.owner.name}</dd>
               </div>
               <div>
-                <dt className="text-muted-foreground">Members</dt>
+                <dt className="text-sm text-muted-foreground">Members</dt>
                 <dd className="font-medium">{community._count.members}</dd>
               </div>
               <div>
-                <dt className="text-muted-foreground">Takes</dt>
+                <dt className="text-sm text-muted-foreground">Takes</dt>
                 <dd className="font-medium">{community._count.takes}</dd>
               </div>
               {community._count.children > 0 && (
                 <div>
-                  <dt className="text-muted-foreground">Associated Kultures</dt>
+                  <dt className="text-sm text-muted-foreground">Associated Kultures</dt>
                   <dd className="font-medium">{community._count.children}</dd>
                 </div>
               )}
             </dl>
-            <div className="mt-4">
-              <Button 
-                onClick={isMember ? leaveCommunity : joinCommunity} 
-                className="w-full" 
-                disabled={isJoining}
-                variant={isMember ? "outline" : "default"}
-              >
-                {isJoining ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {isMember ? 'Leaving...' : 'Joining...'}
-                  </>
-                ) : (
-                  isMember ? 'Leave Kulture' : 'Join Kulture'
-                )}
-              </Button>
-            </div>
-          </div>
+          </Card>
+
+          {/* Associated Kultures */}
+          {community.children.length > 0 && (
+            <Card className="p-6">
+              <h2 className="text-lg font-semibold mb-4">Associated Kultures</h2>
+              <div className="space-y-2">
+                <KultureGrid kultures={community.children} />
+              </div>
+            </Card>
+          )}
         </div>
       </div>
     </div>

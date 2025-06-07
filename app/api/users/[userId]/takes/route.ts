@@ -28,7 +28,9 @@ export async function GET(
           select: {
             id: true,
             name: true,
+            username: true,
             image: true,
+            verified: true,
           },
         },
         community: {

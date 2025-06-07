@@ -18,6 +18,8 @@ interface Take {
   author: {
     id: string
     name: string | null
+    username: string
+    verified: boolean
     image: string | null
   }
   community: {
@@ -60,7 +62,8 @@ export default function TakeCard({ take, currentKultureSlug }: TakeCardProps) {
 
   // Check verification status for current community (the community where the take was posted)
   const currentMemberCount = take.community._count?.members || 0
-  const isVerifiedInCurrent = currentMemberCount > 0 && voteScore >= Math.ceil(currentMemberCount * 0.5)
+  const requiredCurrentVotes = Math.ceil(currentMemberCount * 0.5)
+  const isVerifiedInCurrent = currentMemberCount > 0 && voteScore >= requiredCurrentVotes
 
   // Get parent member count and verification
   const parentMemberCount = take.community.parent?._count?.members || 0
@@ -68,72 +71,88 @@ export default function TakeCard({ take, currentKultureSlug }: TakeCardProps) {
   const isVerifiedInParent = parentMemberCount > 0 && voteScore >= requiredParentVotes
 
   // Debug logs
-  console.log('Take:', {
+  console.log('Take verification details:', {
     takeId: take.id,
     communityName: take.community.name,
     voteScore,
     currentMemberCount,
+    requiredCurrentVotes,
     parentMemberCount,
     requiredParentVotes,
     isVerifiedInParent,
     isVerifiedInCurrent,
     parentName: take.community.parent?.name,
-    parentMemberCount: take.community.parent?._count?.members
+    parentMemberCount: take.community.parent?._count?.members,
+    votes: take.votes.map(v => ({ type: v.type, userId: v.userId })),
+    upvotes: take.votes.filter(v => v.type === 'UP').length,
+    downvotes: take.votes.filter(v => v.type === 'DOWN').length
   })
 
   // Determine if we're viewing from parent or child context
   const isParentView = currentKultureSlug === take.community.parent?.slug
   const isChildView = currentKultureSlug === take.community.slug
 
-  // Determine checkmark color based on context and verification status
-  const getCheckmarkColor = () => {
-    if (isChildView) {
-      // On child's page: green if verified in child context
-      return isVerifiedInCurrent ? "text-green-500" : null
-    } else if (isParentView) {
-      // On parent's page:
-      // Show green if verified in parent context (>50% of parent members)
-      // Show blue if only verified in child context
-      if (isVerifiedInParent) {
-        return "text-green-500"
-      } else if (isVerifiedInCurrent) {
-        return "text-blue-500"
-      }
-      return null
-    } else {
-      // On other pages
-      if (isVerifiedInParent) {
-        return "text-green-500"
-      } else if (isVerifiedInCurrent) {
-        return "text-blue-500"
-      }
-      return null
+  // Determine checkmark color based on verification status
+  let checkmarkColor = null
+  if (isChildView) {
+    // On child's page: green if verified in child context
+    checkmarkColor = isVerifiedInCurrent ? "text-green-500" : null
+    console.log('Child view checkmark:', { isVerifiedInCurrent, checkmarkColor })
+  } else if (isParentView) {
+    // On parent's page:
+    // Show blue if verified in parent context (>50% of parent members)
+    // Show green if only verified in child context
+    if (isVerifiedInParent) {
+      checkmarkColor = "text-blue-500"
+    } else if (isVerifiedInCurrent) {
+      checkmarkColor = "text-green-500"
     }
+    console.log('Parent view checkmark:', { isVerifiedInParent, isVerifiedInCurrent, checkmarkColor })
+  } else {
+    // On other pages
+    if (isVerifiedInParent) {
+      checkmarkColor = "text-blue-500"
+    } else if (isVerifiedInCurrent) {
+      checkmarkColor = "text-green-500"
+    }
+    console.log('Other view checkmark:', { isVerifiedInParent, isVerifiedInCurrent, checkmarkColor })
   }
 
-  // Get tooltip text based on context and verification status
+  // Get tooltip text based on verification status
   const getTooltipText = () => {
-    if (isChildView) {
-      if (isVerifiedInCurrent) {
-        return "Verified in this Kulture"
-      }
-    } else if (isParentView) {
+    if (isParentView) {
       if (isVerifiedInParent) {
-        return "Verified in this Kulture"
+        return `This take is verified in both ${take.community.parent?.name} (${voteScore}/${requiredParentVotes} votes) and ${take.community.name} (${voteScore}/${requiredCurrentVotes} votes)`
       } else if (isVerifiedInCurrent) {
-        return `Verified in ${take.community.name}`
+        return `This take is verified in ${take.community.name} (${voteScore}/${requiredCurrentVotes} votes)`
+      }
+    } else if (isChildView) {
+      if (isVerifiedInCurrent) {
+        return `This take is verified in ${take.community.name} (${voteScore}/${requiredCurrentVotes} votes)`
       }
     } else {
       if (isVerifiedInParent) {
-        return `Verified in ${take.community.parent?.name || ''}`
+        return `This take is verified in both ${take.community.parent?.name} (${voteScore}/${requiredParentVotes} votes) and ${take.community.name} (${voteScore}/${requiredCurrentVotes} votes)`
       } else if (isVerifiedInCurrent) {
-        return `Verified in ${take.community.name}`
+        return `This take is verified in ${take.community.name} (${voteScore}/${requiredCurrentVotes} votes)`
       }
     }
-    return "Not verified"
+    return ''
   }
 
-  const checkmarkColor = getCheckmarkColor()
+  // Debug logs for tooltip
+  console.log('Tooltip details:', {
+    tooltipText: getTooltipText(),
+    isParentView,
+    isChildView,
+    isVerifiedInParent,
+    isVerifiedInCurrent,
+    communityName: take.community.name,
+    parentName: take.community.parent?.name,
+    voteScore,
+    requiredCurrentVotes,
+    requiredParentVotes
+  })
 
   return (
     <Card className="hover:border-foreground/10 transition-colors">
@@ -172,8 +191,20 @@ export default function TakeCard({ take, currentKultureSlug }: TakeCardProps) {
               image={take.author.image || null}
               className="h-4 w-4"
             />
-            <Link href={`/user/${take.author.id}`} className="hover:underline">
-              {take.author.name}
+            <Link href={`/user/${take.author.id}`} className="hover:underline flex items-center gap-1">
+              {take.author.username}
+              {take.author.verified && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <CheckCircle2 className="h-4 w-4 text-blue-500" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Verified User
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
             </Link>
             <span>•</span>
             <span>{formatDistanceToNow(new Date(take.createdAt))} ago</span>

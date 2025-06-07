@@ -47,6 +47,7 @@ model User {
   id            String    @id @default(cuid())
   name          String?
   email         String?   @unique
+  username      String?   @unique
   emailVerified DateTime?
   image         String?
   createdAt     DateTime  @default(now())
@@ -58,6 +59,8 @@ model User {
   comments      Comment[]
   communities   CommunityMember[]
   ownedCommunities Community[] @relation("CommunityOwner")
+  verified      Boolean   @default(false)
+  viewedTakes   ViewedTake[]
 }
 
 model Community {
@@ -107,6 +110,7 @@ model Take {
   community   Community @relation(fields: [communityId], references: [id])
   votes       Vote[]
   comments    Comment[]
+  viewedBy    ViewedTake[]
 
   @@index([authorId])
   @@index([communityId])
@@ -147,4 +151,17 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+model ViewedTake {
+  id        String   @id @default(cuid())
+  userId    String
+  takeId    String
+  viewedAt  DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  take      Take     @relation(fields: [takeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, takeId])
+  @@index([userId])
+  @@index([takeId])
 }

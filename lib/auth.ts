@@ -25,11 +25,27 @@ export const authOptions: NextAuthOptions = {
 
       // If user doesn't exist, create them
       if (!dbUser) {
+        // Generate a unique username from email
+        const baseUsername = user.email.split('@')[0]
+        let username = baseUsername
+        let counter = 1
+
+        // Keep trying until we find a unique username
+        while (true) {
+          const existingUser = await prisma.user.findUnique({
+            where: { username }
+          })
+          if (!existingUser) break
+          username = `${baseUsername}${counter}`
+          counter++
+        }
+
         await prisma.user.create({
           data: {
             email: user.email,
             name: user.name,
             image: user.image,
+            username,
           }
         })
       }
