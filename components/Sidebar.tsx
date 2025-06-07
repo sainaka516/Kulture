@@ -12,18 +12,23 @@ import {
   User,
   PlusCircle,
   Settings,
+  UserPlus,
+  Users,
 } from 'lucide-react'
+import FriendRequestBadge from './FriendRequestBadge'
+import NotificationBadge from './NotificationBadge'
 
 export default function Sidebar() {
   const pathname = usePathname()
   const { data: session } = useSession()
 
   const navigation = [
-    { name: 'Home', href: session?.user ? '/profile' : '/', icon: Home },
-    { name: 'Explore', href: '/explore', icon: Compass },
-    { name: 'Notifications', href: '/notifications', icon: Bell },
+    { name: 'Explore', href: '/explore', icon: Home },
+    { name: 'Notifications', href: '/notifications', icon: Bell, showNotificationBadge: true },
     { name: 'Messages', href: '/messages', icon: MessageSquare },
-    { name: 'Profile', href: '/profile', icon: User },
+    { name: 'Friends', href: '/friends', icon: Users },
+    { name: 'Friend Requests', href: '/friends/requests', icon: UserPlus, showFriendRequestBadge: true },
+    { name: 'Profile', href: session?.user ? `/user/${session.user.id}` : '/profile', icon: User },
   ]
 
   const secondaryNavigation = [
@@ -40,7 +45,7 @@ export default function Sidebar() {
               key={item.name}
               href={item.href}
               className={cn(
-                'flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors',
+                'flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors relative',
                 (pathname === item.href || (item.href === '/profile' && pathname === '/'))
                   ? 'bg-purple-900/10 text-purple-900 dark:bg-purple-900/20 dark:text-purple-400'
                   : 'text-muted-foreground hover:bg-purple-900/10 hover:text-purple-900 dark:hover:bg-purple-900/20 dark:hover:text-purple-400'
@@ -48,6 +53,8 @@ export default function Sidebar() {
             >
               <item.icon className="h-5 w-5 mr-3" />
               {item.name}
+              {item.showFriendRequestBadge && <FriendRequestBadge />}
+              {item.showNotificationBadge && <NotificationBadge />}
             </Link>
           ))}
         </div>

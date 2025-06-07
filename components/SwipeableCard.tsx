@@ -14,6 +14,7 @@ import Link from 'next/link'
 import { Badge } from './ui/badge'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
 import { VerifiedBadge } from '@/components/VerifiedBadge'
+import { UserAvatar } from './ui/user-avatar'
 
 interface SwipeableCardProps {
   take: Take
@@ -107,6 +108,9 @@ export default function SwipeableCard({
     return ''
   }
 
+  // Check if verified in both cultures
+  const isVerifiedInBoth = isVerifiedInCurrent && isVerifiedInParent
+
   // Configure spring animation
   const [{ x, rotate, scale }, api] = useSpring(() => ({
     x: 0,
@@ -127,20 +131,24 @@ export default function SwipeableCard({
         return
       }
 
-      const swipeThreshold = 50
-      const isSwipingLeft = mx < -swipeThreshold
-      const isSwipingRight = mx > swipeThreshold && hasPrevious
+      const swipeThreshold = 100 // Fixed threshold in pixels
+      const velocityThreshold = 0.2 // Lower velocity threshold for easier swipes
 
       if (active) {
         setIsDragging(true)
         api.start({ 
           x: mx, 
           rotate: mx * 0.03,
-          scale: 1 - Math.abs(mx) / (windowWidth * 4), // Scale down slightly as card moves away
+          scale: 1 - Math.abs(mx) / (windowWidth * 4),
         })
       } else {
         setIsDragging(false)
-        if (isSwipingLeft || vx < -0.5) {
+        
+        // Trigger swipe if either threshold is met
+        const shouldSwipeLeft = mx < -swipeThreshold || vx < -velocityThreshold
+        const shouldSwipeRight = hasPrevious && (mx > swipeThreshold || vx > velocityThreshold)
+
+        if (shouldSwipeLeft) {
           // Swipe left - next take
           api.start({
             x: -windowWidth,
@@ -151,7 +159,7 @@ export default function SwipeableCard({
               onNext()
             },
           })
-        } else if (isSwipingRight || (vx > 0.5 && hasPrevious)) {
+        } else if (shouldSwipeRight) {
           // Swipe right - previous take
           api.start({
             x: windowWidth,
@@ -172,8 +180,23 @@ export default function SwipeableCard({
       from: () => [x.get(), 0],
       filterTaps: true,
       rubberband: true,
+      threshold: 5, // Make it more responsive
     }
   )
+
+  // Add keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft' && hasPrevious) {
+        onPrevious()
+      } else if (e.key === 'ArrowRight') {
+        onNext()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [onPrevious, onNext, hasPrevious])
 
   const userVote = session?.user ? take.votes.find(vote => vote.userId === session.user.id)?.type : null
 
@@ -193,47 +216,69 @@ export default function SwipeableCard({
       </div>
       
       <Card className={cn(
-        'w-full max-w-3xl bg-card shadow-xl rounded-xl transition-shadow',
+        'w-full max-w-xl h-full bg-card shadow-xl rounded-xl transition-shadow overflow-y-auto mx-auto',
         isDragging && 'shadow-2xl',
         Math.abs(x.get()) > 0 && 'shadow-2xl'
       )}>
-        <div className="p-8 space-y-8">
+        <div className="p-6 space-y-8 flex flex-col h-full">
           {/* Header */}
-          <div className="flex items-start justify-between">
-            <div>
-              <div className="flex items-center gap-2">
-                <Link
-                  href={`/u/${take.author.username}`}
-                  className="text-lg font-semibold hover:underline"
-                >
-                  {take.author.name || take.author.username}
-                </Link>
-                {take.author.verified && <VerifiedBadge />}
-              </div>
-              <div className="text-base text-muted-foreground mt-1">
-                <Link
-                  href={`/k/${take.community.slug}`}
-                  className="hover:underline"
-                >
-                  {take.community.parent ? (
-                    <>
-                      <span className="text-muted-foreground">{take.community.parent.name}</span>
-                      <span className="text-muted-foreground mx-1">&gt;</span>
-                      <span>{take.community.name}</span>
-                    </>
-                  ) : (
-                    take.community.name
-                  )}
-                </Link>{' '}
-                · {formatTimeAgo(new Date(take.createdAt))}
-              </div>
-            </div>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Link href={`/k/${take.community.slug}`} className="hover:text-foreground hover:underline flex items-center gap-1">
+              {take.community.parent ? (
+                <>
+                  <span className="text-muted-foreground">{take.community.parent.name}</span>
+                  <span className="text-muted-foreground mx-1">{'>'}</span>
+                  <span>{take.community.name}</span>
+                </>
+              ) : (
+                take.community.name
+              )}
+            </Link>
+            <span>•</span>
+            <span>Shared by</span>
+            <UserAvatar
+              user={{
+                image: take.author.image,
+                username: take.author.username
+              }}
+              className="h-4 w-4"
+            />
+            <Link href={`/user/${take.author.id}`} className="hover:underline flex items-center gap-1">
+              @{take.author.username}
+              {take.author.verified && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <CheckCircle2 className="h-4 w-4 text-blue-500" />
+                    </TooltipTrigger>
+                    <TooltipContent>Verified User</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+            </Link>
+            <span>•</span>
+            <span>{formatTimeAgo(new Date(take.createdAt))}</span>
+            {checkmarkColor && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <div className="flex items-center">
+                      <CheckCircle2 className={cn("h-4 w-4", checkmarkColor)} />
+                      {isVerifiedInBoth && (
+                        <span className="ml-1 text-xs font-bold text-blue-500">2x</span>
+                      )}
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>{getTooltipText()}</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
           </div>
 
           {/* Content */}
-          <div className="space-y-4">
+          <div className="flex-grow space-y-8">
             <Link href={`/take/${take.id}`} className="group">
-              <h2 className="text-3xl font-semibold leading-tight flex items-center gap-2 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+              <h2 className="text-3xl font-bold leading-tight text-center flex flex-col items-center gap-4 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
                 {take.title}
                 {checkmarkColor && (
                   <div className="flex items-center gap-1">
@@ -243,22 +288,13 @@ export default function SwipeableCard({
                           <div className="flex items-center gap-1">
                             <CheckCircle2 
                               className={cn(
-                                "h-6 w-6", 
+                                "h-7 w-7", 
                                 checkmarkColor,
                                 "transition-colors duration-200"
                               )} 
                             />
-                            {isParentView && !isChildView && isVerifiedInParent && (
-                              <Badge 
-                                variant="outline" 
-                                className={cn(
-                                  "h-5 px-2 text-sm",
-                                  isVerifiedInParent ? "border-blue-500 text-blue-600" : "border-green-500 text-green-600",
-                                  "transition-colors duration-200"
-                                )}
-                              >
-                                2x
-                              </Badge>
+                            {isVerifiedInBoth && (
+                              <span className="text-sm font-bold text-blue-500">2x</span>
                             )}
                           </div>
                         </TooltipTrigger>
@@ -272,53 +308,55 @@ export default function SwipeableCard({
               </h2>
             </Link>
             {take.content && (
-              <p className="text-xl text-muted-foreground leading-relaxed">{take.content}</p>
+              <p className="text-xl text-muted-foreground leading-relaxed text-center">{take.content}</p>
             )}
-            <Link 
-              href={`/take/${take.id}`}
-              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors group"
-            >
-              <MessageSquare className="h-4 w-4" />
-              <span>{take._count?.comments || 0} comments</span>
-              <ChevronRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
-            </Link>
           </div>
           
           {/* Footer */}
-          <div className="flex items-center justify-between pt-6 border-t">
-            <div className="flex items-center gap-4 voting-buttons" style={{ touchAction: 'auto' }}>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onVote('UP')
-                }}
-                className={cn(
-                  'flex items-center gap-2',
-                  userVote === 'UP' && 'bg-purple-600 hover:bg-purple-700 text-white'
-                )}
-                style={{ touchAction: 'manipulation' }}
+          <div className="pt-6 border-t mt-auto">
+            <div className="flex flex-col items-center gap-4">
+              <div className="flex items-center gap-4 voting-buttons" style={{ touchAction: 'auto' }}>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onVote('UP')
+                  }}
+                  className={cn(
+                    'flex items-center gap-2 w-32',
+                    userVote === 'UP' && 'bg-purple-600 hover:bg-purple-700 text-white'
+                  )}
+                  style={{ touchAction: 'manipulation' }}
+                >
+                  <ThumbsUp className="h-5 w-5" />
+                  <span className="text-lg">{(take.votes || []).filter(vote => vote.type === 'UP').length}</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onVote('DOWN')
+                  }}
+                  className={cn(
+                    'flex items-center gap-2 w-32',
+                    userVote === 'DOWN' && 'bg-red-600 hover:bg-red-700 text-white'
+                  )}
+                  style={{ touchAction: 'manipulation' }}
+                >
+                  <ThumbsDown className="h-5 w-5" />
+                  <span className="text-lg">{(take.votes || []).filter(vote => vote.type === 'DOWN').length}</span>
+                </Button>
+              </div>
+              <Link 
+                href={`/take/${take.id}`}
+                className="inline-flex items-center gap-2 text-base text-muted-foreground hover:text-foreground transition-colors group"
               >
-                <ThumbsUp className="h-4 w-4" />
-                <span>{(take.votes || []).filter(vote => vote.type === 'UP').length}</span>
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onVote('DOWN')
-                }}
-                className={cn(
-                  'flex items-center gap-2',
-                  userVote === 'DOWN' && 'bg-red-600 hover:bg-red-700 text-white'
-                )}
-                style={{ touchAction: 'manipulation' }}
-              >
-                <ThumbsDown className="h-4 w-4" />
-                <span>{(take.votes || []).filter(vote => vote.type === 'DOWN').length}</span>
-              </Button>
+                <MessageSquare className="h-5 w-5" />
+                <span>{take._count?.comments || 0} comments</span>
+                <ChevronRight className="h-5 w-5 group-hover:translate-x-0.5 transition-transform" />
+              </Link>
             </div>
           </div>
         </div>

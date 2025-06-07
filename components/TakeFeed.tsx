@@ -10,29 +10,33 @@ import { Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface TakeFeedProps {
-  initialTakes: Take[]
+  takes: Take[]
   communityId?: string
   communitySlug: string | null
   onTakeViewed?: (takeId: string) => void
+  defaultView?: 'list' | 'swipe'
+  showViewSwitcher?: boolean
 }
 
 export default function TakeFeed({
-  initialTakes = [],
+  takes = [],
   communityId,
   communitySlug,
   onTakeViewed,
+  defaultView = 'list',
+  showViewSwitcher = false,
 }: TakeFeedProps) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const view = searchParams.get('view') || 'swipe'
+  const view = searchParams.get('view') || defaultView
 
-  const [takes, setTakes] = useState<Take[]>([])
+  const [localTakes, setLocalTakes] = useState<Take[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    setTakes(initialTakes)
+    setLocalTakes(takes)
     setIsLoading(false)
-  }, [initialTakes])
+  }, [takes])
 
   // Create URLs for each view
   const createViewUrl = (viewType: string) => {
@@ -47,7 +51,7 @@ export default function TakeFeed({
       onTakeViewed(takeId)
       // Remove the viewed take from the list if we're in explore mode
       if (!communitySlug) {
-        setTakes(prev => prev.filter(take => take.id !== takeId))
+        setLocalTakes(prev => prev.filter(take => take.id !== takeId))
       }
     }
   }
@@ -60,7 +64,7 @@ export default function TakeFeed({
     )
   }
 
-  if (!takes.length) {
+  if (!localTakes.length) {
     return (
       <div className="text-center py-6">
         <p className="text-muted-foreground">No takes available. Check back later!</p>
@@ -70,8 +74,8 @@ export default function TakeFeed({
 
   return (
     <div className="space-y-4">
-      {/* Only show view switching buttons on kulture pages */}
-      {communitySlug && (
+      {/* Show view switching buttons if enabled */}
+      {showViewSwitcher && (
         <div className="flex justify-center gap-2 mb-6">
           <Link
             href={createViewUrl('swipe')}
@@ -98,17 +102,17 @@ export default function TakeFeed({
         </div>
       )}
 
-      {/* Always use swipe view on explore page, otherwise respect the view preference */}
-      {!communitySlug || view === 'swipe' ? (
+      {/* Show appropriate view based on preference */}
+      {view === 'swipe' ? (
         <SwipeableTakeFeed
-          initialTakes={takes}
+          initialTakes={localTakes}
           communityId={communityId}
           communitySlug={communitySlug}
           onTakeViewed={handleTakeViewed}
         />
       ) : (
         <div className="space-y-4">
-          {takes.map((take) => (
+          {localTakes.map((take) => (
             <TakeCard
               key={take.id}
               take={take}

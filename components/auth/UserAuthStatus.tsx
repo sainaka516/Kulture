@@ -61,7 +61,7 @@ export default function UserAuthStatus() {
   }
 
   return (
-    <Link href="/sign-in">
+    <Link href="/login">
       <Avatar className="cursor-pointer hover:opacity-80">
         <AvatarFallback className="bg-gray-100">
           <User className="h-5 w-5 text-gray-400" />

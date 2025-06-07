@@ -6,6 +6,7 @@ import Navbar from '@/components/Navbar'
 import AuthProvider from '@/components/providers/auth-provider'
 import { ThemeProvider } from '@/components/providers/theme-provider'
 import { Toaster } from '@/components/ui/toaster'
+import { cn } from '@/lib/utils'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -21,7 +22,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
+      <body className={cn('min-h-screen bg-background font-sans antialiased', inter.className)}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

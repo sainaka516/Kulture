@@ -24,11 +24,15 @@ export default function SwipeableTakeFeed({
   const { data: session } = useSession()
   const { toast } = useToast()
   const [takes, setTakes] = useState<Take[]>([])
+  const [viewedTakes, setViewedTakes] = useState<Take[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
+    console.log('Setting takes from initialTakes:', initialTakes)
     setTakes(initialTakes)
+    setViewedTakes([])
+    setCurrentIndex(0)
   }, [initialTakes])
 
   const currentTake = takes[currentIndex]
@@ -106,40 +110,53 @@ export default function SwipeableTakeFeed({
   const handleNext = useCallback(() => {
     console.log('handleNext called', { currentIndex, totalTakes: takes.length })
     
-    if (currentIndex < takes.length - 1) {
-      // Mark current take as viewed before moving to next
-      if (onTakeViewed && takes[currentIndex]) {
-        onTakeViewed(takes[currentIndex].id)
-      }
-      setCurrentIndex(prevIndex => {
-        console.log('Moving to next take', { from: prevIndex, to: prevIndex + 1 })
-        return prevIndex + 1
-      })
-    } else {
-      console.log('No more takes, showing toast')
-      toast({
-        title: 'No more takes',
-        description: 'You\'ve seen all the takes! Pull to refresh for more.',
-      })
+    if (!currentTake) return
+
+    // Mark current take as viewed before moving to next
+    if (onTakeViewed) {
+      onTakeViewed(currentTake.id)
     }
-  }, [currentIndex, takes.length, toast, onTakeViewed])
+
+    if (!communitySlug) {
+      // In explore mode, move the current take to viewedTakes
+      setViewedTakes(prev => [currentTake, ...prev]) // Add to start of viewed takes
+      setTakes(prev => prev.filter((_, index) => index !== currentIndex))
+    } else {
+      // In community mode, just increment the index
+      setCurrentIndex(prevIndex => prevIndex + 1)
+    }
+  }, [currentIndex, takes.length, communitySlug, onTakeViewed, currentTake])
 
   const handlePrevious = useCallback(() => {
-    console.log('handlePrevious called', { currentIndex })
+    console.log('handlePrevious called', { currentIndex, viewedTakes, takes })
     
-    if (currentIndex > 0) {
-      setCurrentIndex(prevIndex => {
-        console.log('Moving to previous take', { from: prevIndex, to: prevIndex - 1 })
-        return prevIndex - 1
-      })
+    if (!communitySlug) {
+      // In explore mode
+      if (viewedTakes.length > 0) {
+        const previousTake = viewedTakes[0] // Get most recently viewed take
+        console.log('Restoring take:', previousTake)
+        setViewedTakes(prev => prev.slice(1)) // Remove from viewed takes
+        setTakes(prev => [previousTake, ...prev]) // Add to start of current takes
+        setCurrentIndex(0) // Ensure we're viewing the restored take
+      } else {
+        console.log('No previous takes available')
+        toast({
+          title: 'No previous takes',
+          description: 'You\'re at the beginning of your feed!',
+        })
+      }
     } else {
-      console.log('At the beginning, showing toast')
-      toast({
-        title: 'First take',
-        description: 'You\'re at the first take!',
-      })
+      // In community mode, just decrement the index if possible
+      if (currentIndex > 0) {
+        setCurrentIndex(prevIndex => prevIndex - 1)
+      } else {
+        toast({
+          title: 'First take',
+          description: 'You\'re at the first take!',
+        })
+      }
     }
-  }, [currentIndex, toast])
+  }, [currentIndex, communitySlug, viewedTakes, takes, toast])
 
   const handleManualNext = () => {
     handleNext()
@@ -164,7 +181,8 @@ export default function SwipeableTakeFeed({
       
       const data = await response.json()
       console.log('Fetched takes:', data)
-      setTakes(data)
+      setTakes(data.takes)
+      setViewedTakes([])
       setCurrentIndex(0)
     } catch (error) {
       console.error('Error fetching takes:', error)
@@ -178,6 +196,16 @@ export default function SwipeableTakeFeed({
     }
   }, [communitySlug, toast])
 
+  // Add debug logging for state changes
+  useEffect(() => {
+    console.log('State updated:', {
+      takesCount: takes.length,
+      viewedTakesCount: viewedTakes.length,
+      currentIndex,
+      currentTakeId: currentTake?.id
+    })
+  }, [takes, viewedTakes, currentIndex, currentTake])
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-[500px]">
@@ -186,27 +214,12 @@ export default function SwipeableTakeFeed({
     )
   }
 
-  if (!takes || takes.length === 0) {
+  if (!takes || (takes.length === 0 && viewedTakes.length === 0)) {
     return (
       <div className="text-center p-8">
-        <h2 className="text-2xl font-bold mb-2">No takes yet</h2>
+        <h2 className="text-2xl font-bold mb-2">No more takes to see!</h2>
         <p className="text-muted-foreground mb-4">
-          Be the first to share a take!
-        </p>
-        <Button onClick={fetchTakes} variant="outline">
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Refresh Takes
-        </Button>
-      </div>
-    )
-  }
-
-  if (!currentTake) {
-    return (
-      <div className="text-center p-8">
-        <h2 className="text-2xl font-bold mb-2">You're all caught up!</h2>
-        <p className="text-muted-foreground mb-4">
-          You've seen all the takes. Check back later for more!
+          You've seen all the takes for now. Check back later for new ones!
         </p>
         <Button onClick={fetchTakes} variant="outline">
           <RefreshCw className="h-4 w-4 mr-2" />
@@ -219,13 +232,13 @@ export default function SwipeableTakeFeed({
   return (
     <div className="relative">
       {/* Navigation buttons */}
-      <div className="flex justify-between items-center mb-4 px-4">
+      <div className="flex justify-center items-center gap-4 mb-4">
         <Button
           variant="ghost"
           size="sm"
           onClick={handleManualPrevious}
-          disabled={currentIndex === 0}
-          className="flex items-center gap-1"
+          disabled={!communitySlug ? viewedTakes.length === 0 : currentIndex === 0}
+          className="flex items-center gap-1 hover:bg-accent hover:text-accent-foreground"
         >
           <ChevronLeft className="h-4 w-4" />
           Previous
@@ -234,8 +247,8 @@ export default function SwipeableTakeFeed({
           variant="ghost"
           size="sm"
           onClick={handleManualNext}
-          disabled={currentIndex === takes.length - 1}
-          className="flex items-center gap-1"
+          disabled={takes.length === 0}
+          className="flex items-center gap-1 hover:bg-accent hover:text-accent-foreground"
         >
           Next
           <ChevronRight className="h-4 w-4" />
@@ -243,7 +256,7 @@ export default function SwipeableTakeFeed({
       </div>
 
       {/* Swipeable card container with fixed height */}
-      <div className="relative h-[500px] mt-8">
+      <div className="relative h-[85vh] mt-2">
         {currentTake && (
           <SwipeableCard
             key={currentTake.id}
@@ -252,7 +265,7 @@ export default function SwipeableTakeFeed({
             onVote={handleVote}
             onNext={handleNext}
             onPrevious={handlePrevious}
-            hasPrevious={currentIndex > 0}
+            hasPrevious={!communitySlug ? viewedTakes.length > 0 : currentIndex > 0}
           />
         )}
       </div>

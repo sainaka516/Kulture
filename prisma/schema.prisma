@@ -48,6 +48,7 @@ model User {
   name          String?
   email         String?   @unique
   username      String?   @unique
+  password      String?
   emailVerified DateTime?
   image         String?
   createdAt     DateTime  @default(now())
@@ -61,6 +62,12 @@ model User {
   ownedCommunities Community[] @relation("CommunityOwner")
   verified      Boolean   @default(false)
   viewedTakes   ViewedTake[]
+  sentFriendRequests FriendRequest[] @relation("SentFriendRequests")
+  receivedFriendRequests FriendRequest[] @relation("ReceivedFriendRequests")
+  friends       Friendship[] @relation("UserFriends")
+  friendsOf     Friendship[] @relation("FriendsOfUser")
+  notifications        Notification[] @relation()
+  notificationsSent    Notification[] @relation("NotificationFrom")
 }
 
 model Community {
@@ -111,6 +118,7 @@ model Take {
   votes       Vote[]
   comments    Comment[]
   viewedBy    ViewedTake[]
+  notifications Notification[]
 
   @@index([authorId])
   @@index([communityId])
@@ -164,4 +172,50 @@ model ViewedTake {
   @@unique([userId, takeId])
   @@index([userId])
   @@index([takeId])
+}
+
+model FriendRequest {
+  id          String   @id @default(cuid())
+  senderId    String
+  receiverId  String
+  status      String   @default("PENDING") // PENDING, ACCEPTED, REJECTED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  sender      User     @relation("SentFriendRequests", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver    User     @relation("ReceivedFriendRequests", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@unique([senderId, receiverId])
+  @@index([senderId])
+  @@index([receiverId])
+}
+
+model Friendship {
+  id          String   @id @default(cuid())
+  userId      String
+  friendId    String
+  createdAt   DateTime @default(now())
+  user        User     @relation("UserFriends", fields: [userId], references: [id], onDelete: Cascade)
+  friend      User     @relation("FriendsOfUser", fields: [friendId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, friendId])
+  @@index([userId])
+  @@index([friendId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String   // User who should receive the notification
+  type      String   // FRIEND_REQUEST_ACCEPTED, TAKE_UPVOTED, TAKE_DOWNVOTED
+  takeId    String?  // Optional: for vote notifications
+  fromId    String?  // Optional: for friend request notifications
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  take      Take?    @relation(fields: [takeId], references: [id], onDelete: Cascade)
+  from      User?    @relation("NotificationFrom", fields: [fromId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([takeId])
+  @@index([fromId])
 }

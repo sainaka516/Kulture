@@ -71,9 +71,22 @@ export default function VoteButtons({
       }, 0)
       setVoteScore(newScore)
 
-      // Show success message only if the vote was added or changed
+      // Create notification for the take's author
       const isRemovingVote = userVote?.type === type
       if (!isRemovingVote) {
+        try {
+          await fetch('/api/notifications', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: type === 'UP' ? 'TAKE_UPVOTED' : 'TAKE_DOWNVOTED',
+              takeId: takeId,
+            }),
+          })
+        } catch (error) {
+          console.error('Error creating vote notification:', error)
+        }
+
         toast({
           title: 'Success',
           description: `You ${type === 'UP' ? 'agreed with' : 'disagreed with'} this take`,

@@ -12,26 +12,87 @@ export const fetchCache = 'force-no-store'
 async function getTakes() {
   try {
     const session = await getServerSession(authOptions)
+    console.log('Session:', { userId: session?.user?.id })
+
+    if (!session?.user?.id) {
+      console.log('No user session')
+      return []
+    }
 
     // Get viewed takes for the current user
-    const viewedTakeIds = session?.user?.id
-      ? (await prisma.viewedTake.findMany({
-          where: { userId: session.user.id },
-          select: { takeId: true }
-        })).map(vt => vt.takeId)
-      : []
+    const viewedTakeIds = (await prisma.viewedTake.findMany({
+      where: { userId: session.user.id },
+      select: { takeId: true }
+    })).map(vt => vt.takeId)
+    console.log('Viewed take IDs:', viewedTakeIds)
 
-    // Get all takes except viewed ones
-    const takes = await prisma.take.findMany({
-      take: 100, // Increased limit to ensure we have enough takes after filtering
+    // Get friends' IDs
+    const friendIds = (await prisma.friendship.findMany({
+      where: { userId: session.user.id },
+      select: { friendId: true }
+    })).map(f => f.friendId)
+    console.log('Friend IDs:', friendIds)
+
+    // Get friends' takes first if user has friends
+    const friendsTakes = friendIds.length > 0
+      ? await prisma.take.findMany({
+          where: {
+            id: { notIn: viewedTakeIds },
+            authorId: { in: friendIds }
+          },
+          orderBy: { createdAt: 'desc' },
+          include: {
+            author: {
+              select: {
+                id: true,
+                name: true,
+                image: true,
+                username: true,
+                verified: true,
+              },
+            },
+            community: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                parent: {
+                  select: {
+                    id: true,
+                    name: true,
+                    slug: true,
+                    _count: {
+                      select: {
+                        members: true
+                      }
+                    }
+                  }
+                },
+                _count: {
+                  select: {
+                    members: true
+                  }
+                }
+              },
+            },
+            votes: true,
+            _count: {
+              select: {
+                comments: true,
+              }
+            },
+          },
+        })
+      : []
+    console.log('Friends takes:', friendsTakes.map(t => ({ id: t.id, title: t.title, authorId: t.authorId })))
+
+    // Get takes from other users
+    const otherTakes = await prisma.take.findMany({
       where: {
-        id: {
-          notIn: viewedTakeIds
-        }
+        id: { notIn: viewedTakeIds },
+        authorId: { notIn: [...friendIds, session.user.id] }
       },
-      orderBy: {
-        createdAt: 'desc'
-      },
+      orderBy: { createdAt: 'desc' },
       include: {
         author: {
           select: {
@@ -74,12 +135,13 @@ async function getTakes() {
         },
       },
     })
+    console.log('Other takes:', otherTakes.map(t => ({ id: t.id, title: t.title, authorId: t.authorId })))
 
-    // Transform and shuffle takes
-    const transformedTakes = takes.map(take => ({
+    // Combine and transform takes
+    const allTakes = [...friendsTakes, ...otherTakes].map(take => ({
       ...take,
-      currentUserId: session?.user?.id || null,
-      userVote: take.votes.find(vote => vote.userId === session?.user?.id)?.type || null,
+      currentUserId: session.user.id,
+      userVote: take.votes.find(vote => vote.userId === session.user.id)?.type || null,
       community: {
         ...take.community,
         _count: {
@@ -95,17 +157,12 @@ async function getTakes() {
         } : null
       }
     }))
+    console.log('All takes:', allTakes.map(t => ({ id: t.id, title: t.title, authorId: t.authorId })))
 
-    // Fisher-Yates shuffle algorithm
-    for (let i = transformedTakes.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [transformedTakes[i], transformedTakes[j]] = [transformedTakes[j], transformedTakes[i]];
-    }
-
-    return transformedTakes
+    return allTakes
 
   } catch (error) {
-    console.error('Error fetching random takes:', error)
+    console.error('Error fetching takes:', error)
     return []
   }
 }

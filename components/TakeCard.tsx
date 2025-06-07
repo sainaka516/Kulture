@@ -140,6 +140,9 @@ export default function TakeCard({ take, currentKultureSlug }: TakeCardProps) {
     return ''
   }
 
+  // Check if verified in both cultures
+  const isVerifiedInBoth = isVerifiedInCurrent && isVerifiedInParent
+
   // Debug logs for tooltip
   console.log('Tooltip details:', {
     tooltipText: getTooltipText(),
@@ -147,6 +150,7 @@ export default function TakeCard({ take, currentKultureSlug }: TakeCardProps) {
     isChildView,
     isVerifiedInParent,
     isVerifiedInCurrent,
+    isVerifiedInBoth,
     communityName: take.community.name,
     parentName: take.community.parent?.name,
     voteScore,
@@ -187,54 +191,48 @@ export default function TakeCard({ take, currentKultureSlug }: TakeCardProps) {
             <span>•</span>
             <span>Shared by</span>
             <UserAvatar
-              name={take.author.name || null}
-              image={take.author.image || null}
+              user={{
+                image: take.author.image,
+                username: take.author.username
+              }}
               className="h-4 w-4"
             />
             <Link href={`/user/${take.author.id}`} className="hover:underline flex items-center gap-1">
-              {take.author.username}
+              @{take.author.username}
               {take.author.verified && (
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger>
                       <CheckCircle2 className="h-4 w-4 text-blue-500" />
                     </TooltipTrigger>
-                    <TooltipContent>
-                      Verified User
-                    </TooltipContent>
+                    <TooltipContent>Verified User</TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               )}
             </Link>
             <span>•</span>
             <span>{formatDistanceToNow(new Date(take.createdAt))} ago</span>
+            {checkmarkColor && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <div className="flex items-center">
+                      <CheckCircle2 className={cn("h-4 w-4", checkmarkColor)} />
+                      {isVerifiedInBoth && (
+                        <span className="ml-1 text-xs font-bold text-blue-500">2x</span>
+                      )}
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>{getTooltipText()}</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
           </div>
 
           {/* Take title */}
           <Link href={`/take/${take.id}`}>
             <h2 className="text-lg font-semibold leading-snug hover:underline flex items-center gap-2">
               {take.title}
-              {checkmarkColor && (
-                <div className="flex items-center gap-1">
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger>
-                        <div className="flex items-center gap-1">
-                          <CheckCircle2 className={cn("h-5 w-5", checkmarkColor)} />
-                          {isParentView && !isChildView && (
-                            <Badge variant="secondary" className="h-4 px-1 text-xs">
-                              {isVerifiedInParent ? 2 : 1}x
-                            </Badge>
-                          )}
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>{getTooltipText()}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
-              )}
             </h2>
           </Link>
 

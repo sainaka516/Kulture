@@ -239,9 +239,11 @@ export default function CommunityClient({ community }: CommunityClientProps) {
             }
           >
             <TakeFeed 
-              initialTakes={community.takes} 
+              takes={community.takes} 
               communityId={community.id}
               communitySlug={community.slug}
+              defaultView="swipe"
+              showViewSwitcher={true}
             />
           </Suspense>
         </div>

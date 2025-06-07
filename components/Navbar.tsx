@@ -34,13 +34,13 @@ export default function Navbar() {
         {/* Navigation Links */}
         <div className="flex items-center space-x-4 flex-1 justify-start max-w-xs">
           <Link
-            href={session?.user ? '/profile' : '/'}
+            href="/explore"
             className={cn(
               "text-sm font-medium transition-colors hover:text-foreground",
-              (pathname === "/" || pathname === "/profile") ? "text-foreground" : "text-muted-foreground"
+              pathname === "/explore" ? "text-foreground" : "text-muted-foreground"
             )}
           >
-            Home
+            Explore
           </Link>
           <Link
             href="/kultures"

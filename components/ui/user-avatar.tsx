@@ -2,7 +2,7 @@ import { User } from '@prisma/client'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 
 interface UserAvatarProps {
-  user: Pick<User, 'image' | 'name'> | null
+  user: Pick<User, 'image' | 'username'> | null
   className?: string
 }
 
@@ -13,7 +13,7 @@ export function UserAvatar({ user, className }: UserAvatarProps) {
         <AvatarImage alt="Picture" src={user.image} />
       ) : (
         <AvatarFallback>
-          {user?.name ? user.name.charAt(0) : '?'}
+          {user?.username ? user.username.charAt(0).toUpperCase() : '?'}
         </AvatarFallback>
       )}
     </Avatar>

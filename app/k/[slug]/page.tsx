@@ -198,7 +198,7 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
     _count: {
       ...take._count,
       upvotes: take.votes.filter(vote => vote.type === 'UP').length,
-      downvotes: take.votes.filter(vote => vote.type === 'DOWN').length,
+      downvotes: take.votes.filter(vote => vote.type === 'DOWN').length
     },
     currentUserId: session?.user?.id,
     userVote: session?.user?.id 
@@ -206,25 +206,13 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
       : null
   }))
 
-  // Add the transformed takes to the community data
-  const communityWithTakes = {
-    ...fullCommunity,
-    takes: transformedTakes
-  }
-
-  console.log('Final community data:', {
-    id: communityWithTakes.id,
-    name: communityWithTakes.name,
-    takesCount: communityWithTakes.takes.length,
-    childrenCount: communityWithTakes.children.length,
-    takes: communityWithTakes.takes.map(t => ({
-      id: t.id,
-      title: t.title,
-      communityId: t.communityId,
-      communityName: t.community.name,
-      parentCommunityName: t.community.parent?.name
-    }))
-  })
-
-  return <CommunityClient community={communityWithTakes} />
+  // Return the client component with the full community data
+  return (
+    <CommunityClient
+      community={{
+        ...fullCommunity,
+        takes: transformedTakes
+      }}
+    />
+  )
 } 

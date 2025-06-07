@@ -37,11 +37,12 @@ export default function ExploreClient({ initialTakes }: ExploreClientProps) {
     setIsLoading(true)
     try {
       const response = await fetch(`/api/takes?page=${page + 1}`)
-      const newTakes = await response.json()
+      const data = await response.json()
       
-      if (newTakes.length > 0) {
-        setTakes(prev => [...prev, ...newTakes])
+      if (data.takes.length > 0) {
+        setTakes(prev => [...prev, ...data.takes])
         setPage(prev => prev + 1)
+        setHasMore(data.hasMore)
       } else {
         setHasMore(false)
       }
@@ -89,10 +90,10 @@ export default function ExploreClient({ initialTakes }: ExploreClientProps) {
     setIsLoading(true)
     try {
       const response = await fetch('/api/takes')
-      const newTakes = await response.json()
-      setTakes(newTakes)
+      const data = await response.json()
+      setTakes(data.takes)
       setPage(1)
-      setHasMore(true)
+      setHasMore(data.hasMore)
     } catch (error) {
       console.error('Error refreshing takes:', error)
     } finally {
@@ -121,8 +122,8 @@ export default function ExploreClient({ initialTakes }: ExploreClientProps) {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-center">
+    <div className="space-y-6 min-h-screen">
+      <div className="flex justify-center mb-2">
         <Button
           variant={showingHistory ? "outline" : "default"}
           onClick={toggleHistory}
@@ -135,8 +136,10 @@ export default function ExploreClient({ initialTakes }: ExploreClientProps) {
       {showingHistory ? (
         <div className="space-y-6">
           <TakeFeed
-            initialTakes={viewedTakes}
+            takes={viewedTakes}
             communitySlug={null}
+            defaultView="swipe"
+            showViewSwitcher={false}
           />
           {hasMore && (
             <div className="flex justify-center">
@@ -160,12 +163,14 @@ export default function ExploreClient({ initialTakes }: ExploreClientProps) {
       ) : (
         <div className="space-y-6">
           <TakeFeed
-            initialTakes={takes}
+            takes={takes}
             communitySlug={null}
             onTakeViewed={markTakeAsViewed}
+            defaultView="swipe"
+            showViewSwitcher={false}
           />
           {hasMore && takes.length > 0 && (
-            <div className="flex justify-center gap-4">
+            <div className="flex justify-center gap-4 mt-4">
               <Button
                 onClick={loadMoreTakes}
                 disabled={isLoading}
