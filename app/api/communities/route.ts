@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
 
 export async function GET() {
   try {
@@ -211,9 +212,9 @@ export async function POST(req: Request) {
     return NextResponse.json(fullCommunity)
   } catch (error) {
     console.error('[COMMUNITIES_POST] Error:', error)
-    if (error.code === 'P2002') {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
       return new NextResponse('A community with this name already exists', { status: 400 })
     }
-    return new NextResponse(error.message || 'Internal Error', { status: 500 })
+    return new NextResponse('Internal Error', { status: 500 })
   }
 } 
