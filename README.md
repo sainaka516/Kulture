@@ -124,3 +124,47 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Deployment and Environments
+
+The project uses a two-environment setup for development and production:
+
+### Development Environment
+- Branch: `development`
+- Supabase Project: kulture-dev
+- Vercel Environment: Preview
+- Purpose: For ongoing development and testing
+
+### Production Environment
+- Branch: `main`
+- Supabase Project: kulture-prod
+- Vercel Environment: Production
+- Purpose: Live user-facing application
+
+### Workflow
+1. All development work happens in the `development` branch
+2. Create feature branches from `development` for new features
+3. Merge feature branches into `development` for testing
+4. When ready for production, create a pull request from `development` to `main`
+5. After review and testing, merge to `main` to deploy to production
+
+### Environment Variables
+Each environment (development and production) needs its own set of environment variables:
+```bash
+# Required for both environments
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+DATABASE_URL=your_database_connection_string
+```
+
+### Database Migrations
+When applying database migrations:
+1. Always test migrations in development first
+2. Use `npx prisma migrate deploy` in production
+3. Never run `prisma migrate dev` in production
+
+### Monitoring and Maintenance
+- Monitor application performance in Vercel dashboard
+- Check database usage and performance in Supabase dashboard
+- Set up alerts for usage thresholds
+- Regularly backup production database
