@@ -38,36 +38,36 @@ export async function GET(request: Request) {
         },
         community: {
           include: {
+            _count: {
+              select: {
+                members: true
+              }
+            },
             parent: {
               include: {
+                _count: {
+                  select: {
+                    members: true
+                  }
+                },
                 parent: {
                   include: {
-                    parent: true
-                  },
-                  select: {
-                    id: true,
-                    name: true,
                     _count: {
                       select: {
                         members: true
                       }
-                    }
-                  }
-                },
-                select: {
-                  id: true,
-                  name: true,
-                  _count: {
-                    select: {
-                      members: true
+                    },
+                    parent: {
+                      include: {
+                        _count: {
+                          select: {
+                            members: true
+                          }
+                        }
+                      }
                     }
                   }
                 }
-              }
-            },
-            _count: {
-              select: {
-                members: true
               }
             }
           }
@@ -136,36 +136,36 @@ export async function POST(request: Request) {
         },
         community: {
           include: {
+            _count: {
+              select: {
+                members: true
+              }
+            },
             parent: {
               include: {
+                _count: {
+                  select: {
+                    members: true
+                  }
+                },
                 parent: {
                   include: {
-                    parent: true
-                  },
-                  select: {
-                    id: true,
-                    name: true,
                     _count: {
                       select: {
                         members: true
                       }
-                    }
-                  }
-                },
-                select: {
-                  id: true,
-                  name: true,
-                  _count: {
-                    select: {
-                      members: true
+                    },
+                    parent: {
+                      include: {
+                        _count: {
+                          select: {
+                            members: true
+                          }
+                        }
+                      }
                     }
                   }
                 }
-              }
-            },
-            _count: {
-              select: {
-                members: true
               }
             }
           }
