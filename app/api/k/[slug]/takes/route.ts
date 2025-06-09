@@ -169,6 +169,4 @@ export async function GET(
     console.error('[COMMUNITY_TAKES_GET]', error)
     return new NextResponse('Internal Error', { status: 500 })
   }
-} 
-  }
-} 
+}
