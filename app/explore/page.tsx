@@ -203,6 +203,10 @@ async function getTakes() {
       createdAt: take.createdAt.toISOString(),
       currentUserId: session.user.id,
       userVote: take.votes.find(vote => vote.userId === session.user.id)?.type || null,
+      votes: take.votes.map(vote => ({
+        type: vote.type as 'UP' | 'DOWN',
+        userId: vote.userId
+      })),
       community: {
         ...take.community,
         _count: {
