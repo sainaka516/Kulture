@@ -4,22 +4,20 @@ import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { animated as a, useSpring } from '@react-spring/web'
 import { useDrag } from '@use-gesture/react'
-import { Take, Community } from '@/lib/types'
+import { Take } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { Button } from './ui/button'
 import { Card } from './ui/card'
-import { ThumbsUp, ThumbsDown, ArrowLeft, ArrowRight, CheckCircle2, MessageSquare, ChevronRight } from 'lucide-react'
+import { ThumbsUp, ThumbsDown, MessageSquare, CheckCircle2 } from 'lucide-react'
 import { formatTimeAgo } from '@/lib/date'
 import Link from 'next/link'
-import { Badge } from './ui/badge'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
-import { VerifiedBadge } from '@/components/VerifiedBadge'
 import { UserAvatar } from './ui/user-avatar'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface SwipeableCardProps {
   take: Take
   currentKultureSlug: string | null
-  onVote: (type: 'UP' | 'DOWN') => void
+  onVote: (type: 'UP' | 'DOWN') => Promise<void>
   onNext: () => void
   onPrevious: () => void
   hasPrevious: boolean
@@ -42,6 +40,9 @@ export default function SwipeableCard({
     setWindowWidth(window.innerWidth)
   }, [])
 
+  // Get user's current vote
+  const userVote = take.votes?.find(vote => vote.userId === session?.user?.id)?.type || null
+
   // Calculate vote score
   const voteScore = (take.votes || []).reduce((acc, vote) => {
     if (vote.type === 'UP') return acc + 1
@@ -49,20 +50,15 @@ export default function SwipeableCard({
     return acc
   }, 0)
 
-  // Check verification status for current community (the community where the take was posted)
+  // Calculate verification status
   const currentMemberCount = take.community._count?.members || 0
   const requiredCurrentVotes = Math.ceil(currentMemberCount * 0.5)
   const isVerifiedInCurrent = currentMemberCount > 0 && voteScore >= requiredCurrentVotes
 
-  // Get parent member count and verification (if we're in a child Kulture)
-  const parentMemberCount = take.community.parent?._count?.members || 0
-  const requiredParentVotes = Math.ceil(parentMemberCount * 0.5)
-  const isVerifiedInParent = parentMemberCount > 0 && voteScore >= requiredParentVotes
-
-  // Get verification status for all ancestors (parent chain)
-  const getVerifiedAncestors = (community: Community): { name: string; isVerified: boolean }[] => {
+  // Get verification status for all ancestors
+  const getVerifiedAncestors = () => {
     const ancestors = []
-    let currentParent = community.parent
+    let currentParent = take.community.parent
 
     while (currentParent) {
       const memberCount = currentParent._count?.members || 0
@@ -74,88 +70,26 @@ export default function SwipeableCard({
         isVerified
       })
 
-      // Move up to the next parent in the chain
       currentParent = currentParent.parent
     }
-
-    // Debug log for ancestor verification
-    console.log('Ancestor verification in SwipeableCard:', {
-      takeId: take.id,
-      title: take.title,
-      ancestors: ancestors.map(a => ({
-        name: a.name,
-        isVerified: a.isVerified,
-      }))
-    })
 
     return ancestors
   }
 
-  // Get verification status for all descendants (if we're in a parent Kulture)
-  const getVerifiedDescendants = (community: Community): { name: string; isVerified: boolean }[] => {
-    // Only check descendants if we're viewing from a parent Kulture
-    // and the take belongs to one of its descendants
-    if (!currentKultureSlug || !take.community.parent) {
-      return []
-    }
-
-    // Check if we're viewing from a parent Kulture
-    const isViewingFromParent = currentKultureSlug === take.community.parent.slug
-
-    if (!isViewingFromParent) {
-      return []
-    }
-
-    const verifiedInThisLevel = (community.children || []).map(child => {
-      // Only check verification for the child community that contains this take
-      if (child.id === take.community.id) {
-        const memberCount = child._count?.members || 0
-        const requiredVotes = Math.ceil(memberCount * 0.5)
-        const isVerified = memberCount > 0 && voteScore >= requiredVotes
-        
-        return [{ name: child.name, isVerified }]
-      }
-      return []
-    }).flat()
-
-    return verifiedInThisLevel
-  }
-
-  const verifiedDescendants = getVerifiedDescendants(take.community)
-  const verifiedAncestors = getVerifiedAncestors(take.community)
-
-  // Calculate total number of Kultures where the take is verified
+  const verifiedAncestors = getVerifiedAncestors()
   const verifiedCount = [
     isVerifiedInCurrent,
-    ...verifiedAncestors.map(ancestor => ancestor.isVerified),
-    ...verifiedDescendants.map(desc => desc.isVerified)
+    ...verifiedAncestors.map(ancestor => ancestor.isVerified)
   ].filter(Boolean).length
 
-  // Determine if we're viewing from parent or sibling context
-  const isParentView = currentKultureSlug === take.community.parent?.slug
-  const isChildView = currentKultureSlug === take.community.slug
-  const isSiblingView = take.community.parent?.id === take.community.parent?.id && !isParentView && !isChildView
-
-  // Determine checkmark color - always blue for verification
-  const checkmarkColor = verifiedCount > 0 ? "text-blue-500" : null
-
-  // Get tooltip text based on verification status
+  // Get tooltip text
   const getTooltipText = () => {
     const verifiedKultures = []
     if (isVerifiedInCurrent) {
       verifiedKultures.push(take.community.name)
     }
-    // Add all verified ancestors
     verifiedAncestors.forEach(ancestor => {
-      if (ancestor.isVerified) {
-        verifiedKultures.push(ancestor.name)
-      }
-    })
-    // Add all verified descendants
-    verifiedDescendants.forEach(desc => {
-      if (desc.isVerified) {
-        verifiedKultures.push(desc.name)
-      }
+      verifiedKultures.push(ancestor.name)
     })
 
     if (verifiedKultures.length === 0) {
@@ -169,9 +103,6 @@ export default function SwipeableCard({
     const lastKulture = verifiedKultures.pop()
     return `This take is verified in ${verifiedKultures.join(', ')} and ${lastKulture} (${voteScore} votes)`
   }
-
-  // Set verification badge text to show total number of verified Kultures
-  const verificationBadgeText = verifiedCount > 0 ? `${verifiedCount}x` : ""
 
   // Configure spring animation
   const [{ x, rotate, scale }, api] = useSpring(() => ({
@@ -193,47 +124,48 @@ export default function SwipeableCard({
         return
       }
 
-      const swipeThreshold = 100 // Fixed threshold in pixels
-      const velocityThreshold = 0.2 // Lower velocity threshold for easier swipes
+      setIsDragging(active)
 
-      if (active) {
-        setIsDragging(true)
-        api.start({ 
-          x: mx, 
-          rotate: mx * 0.03,
-          scale: 1 - Math.abs(mx) / (windowWidth * 4),
-        })
-      } else {
-        setIsDragging(false)
+      // Update spring with movement
+      api.start({
+        x: active ? mx : 0,
+        rotate: active ? mx / 20 : 0,
+        scale: active ? 1.1 : 1,
+        immediate: name => active && name === 'x',
+      })
+
+      // If released with enough velocity or displacement, trigger navigation
+      const displacement = Math.abs(mx)
+      const SWIPE_THRESHOLD = windowWidth * 0.075
+      const VELOCITY_THRESHOLD = 0.3
+
+      if (!active && (displacement > SWIPE_THRESHOLD || Math.abs(vx) > VELOCITY_THRESHOLD)) {
+        const isSwipingLeft = mx < 0
         
-        // Trigger swipe if either threshold is met
-        const shouldSwipeLeft = mx < -swipeThreshold || vx < -velocityThreshold
-        const shouldSwipeRight = hasPrevious && (mx > swipeThreshold || vx > velocityThreshold)
-
-        if (shouldSwipeLeft) {
+        if (isSwipingLeft) {
           // Swipe left - next take
           api.start({
             x: -windowWidth,
             rotate: -30,
-            scale: 0.8,
-            onRest: () => {
-              api.start({ x: 0, rotate: 0, scale: 1, immediate: true })
+            onResolve: () => {
               onNext()
+              // Reset position for next take
+              api.start({ x: 0, rotate: 0, scale: 1 })
             },
           })
-        } else if (shouldSwipeRight) {
-          // Swipe right - previous take
+        } else if (hasPrevious) {
+          // Swipe right - previous take (only if there's a previous take)
           api.start({
             x: windowWidth,
             rotate: 30,
-            scale: 0.8,
-            onRest: () => {
-              api.start({ x: 0, rotate: 0, scale: 1, immediate: true })
+            onResolve: () => {
               onPrevious()
+              // Reset position for next take
+              api.start({ x: 0, rotate: 0, scale: 1 })
             },
           })
         } else {
-          // Return to center
+          // No previous take, bounce back
           api.start({ x: 0, rotate: 0, scale: 1 })
         }
       }
@@ -242,7 +174,6 @@ export default function SwipeableCard({
       from: () => [x.get(), 0],
       filterTaps: true,
       rubberband: true,
-      threshold: 5, // Make it more responsive
     }
   )
 
@@ -260,200 +191,124 @@ export default function SwipeableCard({
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [onPrevious, onNext, hasPrevious])
 
-  const userVote = session?.user ? take.votes.find(vote => vote.userId === session.user.id)?.type : null
-
-  // Debug logging
-  console.log('SwipeableCard verification details:', {
-    takeId: take.id,
-    title: take.title,
-    communityName: take.community.name,
-    voteScore,
-    currentMemberCount,
-    requiredCurrentVotes,
-    isVerifiedInCurrent,
-    parentChain: {
-      parent: take.community.parent ? {
-        name: take.community.parent.name,
-        memberCount: take.community.parent._count?.members,
-        requiredVotes: take.community.parent._count?.members ? Math.ceil(take.community.parent._count.members * 0.5) : null,
-        isVerified: take.community.parent._count?.members ? voteScore >= Math.ceil(take.community.parent._count.members * 0.5) : false
-      } : null,
-      grandparent: take.community.parent?.parent ? {
-        name: take.community.parent.parent.name,
-        memberCount: take.community.parent.parent._count?.members,
-        requiredVotes: take.community.parent.parent._count?.members ? Math.ceil(take.community.parent.parent._count.members * 0.5) : null,
-        isVerified: take.community.parent.parent._count?.members ? voteScore >= Math.ceil(take.community.parent.parent._count.members * 0.5) : false
-      } : null
-    },
-    verifiedDescendants: verifiedDescendants.map(desc => ({ name: desc.name, isVerified: desc.isVerified })),
-    verifiedCount,
-    verificationBadgeText: verifiedCount > 0 ? `${verifiedCount}x` : "",
-    votes: take.votes.map(v => ({ type: v.type, userId: v.userId })),
-    upvotes: take.votes.filter(v => v.type === 'UP').length,
-    downvotes: take.votes.filter(v => v.type === 'DOWN').length
-  })
-
   return (
-    <a.div
-      {...bindDrag()}
-      style={{
-        x,
-        rotate,
-        touchAction: 'none',
-        cursor: isDragging ? 'grabbing' : 'grab',
-      }}
-      className="absolute inset-0 flex items-start justify-center px-4 pt-16 select-none touch-none"
-    >
-      <div className="absolute top-4 left-0 right-0 text-center">
-        <h2 className="text-2xl font-bold text-purple-600 dark:text-purple-400">SWIPE!</h2>
-      </div>
-      
-      <Card className={cn(
-        'w-full max-w-xl h-full bg-card shadow-xl rounded-xl transition-shadow overflow-y-auto mx-auto',
-        isDragging && 'shadow-2xl',
-        Math.abs(x.get()) > 0 && 'shadow-2xl'
-      )}>
-        <div className="p-6 space-y-8 flex flex-col h-full">
-          {/* Header */}
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Link href={`/k/${take.community.slug}`} className="hover:text-foreground hover:underline flex items-center gap-1">
-              {take.community.parent ? (
-                <>
-                  <span className="text-muted-foreground">{take.community.parent.name}</span>
-                  <span className="text-muted-foreground mx-1">{'>'}</span>
-                  <span>{take.community.name}</span>
-                </>
-              ) : (
-                take.community.name
-              )}
-            </Link>
-            <span>•</span>
-            <span>Shared by</span>
-            <UserAvatar
-              user={{
-                image: take.author.image,
-                username: take.author.username
-              }}
-              className="h-4 w-4"
-            />
-            <Link href={`/user/${take.author.id}`} className="hover:underline flex items-center gap-1">
-              @{take.author.username}
-              {take.author.verified && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <CheckCircle2 className="h-4 w-4 text-blue-500" />
-                    </TooltipTrigger>
-                    <TooltipContent>Verified User</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-            </Link>
-            <span>•</span>
-            <span>{formatTimeAgo(new Date(take.createdAt))}</span>
-            {checkmarkColor && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger>
-                    <div className="flex items-center">
-                      <CheckCircle2 className={cn("h-4 w-4", checkmarkColor)} />
-                      {verificationBadgeText && (
-                        <span className="ml-1 text-xs font-bold text-blue-500">{verificationBadgeText}</span>
-                      )}
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>{getTooltipText()}</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-          </div>
-
-          {/* Content */}
-          <div className="flex-grow space-y-8">
-            <Link href={`/take/${take.id}`} className="group">
-              <h2 className="text-3xl font-bold leading-tight text-center flex flex-col items-center gap-4 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
-                {take.title}
-                {checkmarkColor && (
-                  <div className="flex items-center gap-1">
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger>
-                          <div className="flex items-center gap-1">
-                            <CheckCircle2 
-                              className={cn(
-                                "h-7 w-7", 
-                                checkmarkColor,
-                                "transition-colors duration-200"
-                              )} 
-                            />
-                            {verificationBadgeText && (
-                              <span className="text-sm font-bold text-blue-500">{verificationBadgeText}</span>
-                            )}
-                          </div>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p className="text-sm">{getTooltipText()}</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                )}
-              </h2>
-            </Link>
-            {take.content && (
-              <p className="text-xl text-muted-foreground leading-relaxed text-center">{take.content}</p>
-            )}
-          </div>
-          
-          {/* Footer */}
-          <div className="pt-6 border-t mt-auto">
-            <div className="flex flex-col items-center gap-4">
-              <div className="flex items-center gap-4 voting-buttons" style={{ touchAction: 'auto' }}>
-                <Button
-                  variant="outline"
-                  size="lg"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onVote('UP')
-                  }}
-                  className={cn(
-                    'flex items-center gap-2 w-32',
-                    userVote === 'UP' && 'bg-purple-600 hover:bg-purple-700 text-white'
+    <div className="relative">
+      <a.div
+        {...bindDrag()}
+        style={{
+          x,
+          rotate,
+          scale,
+          touchAction: 'none',
+        }}
+        className="touch-none"
+      >
+        <Card className={cn(
+          'relative overflow-hidden bg-card shadow-xl transition-shadow',
+          isDragging && 'shadow-2xl',
+          Math.abs(x.get()) > 0 && 'shadow-2xl'
+        )}>
+          <div className="p-6 space-y-6">
+            {/* Author info */}
+            <div className="flex items-center gap-3">
+              <UserAvatar
+                user={take.author}
+                className="h-10 w-10"
+              />
+              <div>
+                <div className="flex items-center gap-1">
+                  <span className="font-medium">{take.author.name || take.author.username}</span>
+                  {take.author.verified && (
+                    <CheckCircle2 className="h-4 w-4 text-blue-500" />
                   )}
-                  style={{ touchAction: 'manipulation' }}
-                >
-                  <ThumbsUp className="h-5 w-5" />
-                  <span className="text-lg">{(take.votes || []).filter(vote => vote.type === 'UP').length}</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  size="lg"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onVote('DOWN')
-                  }}
-                  className={cn(
-                    'flex items-center gap-2 w-32',
-                    userVote === 'DOWN' && 'bg-red-600 hover:bg-red-700 text-white'
-                  )}
-                  style={{ touchAction: 'manipulation' }}
-                >
-                  <ThumbsDown className="h-5 w-5" />
-                  <span className="text-lg">{(take.votes || []).filter(vote => vote.type === 'DOWN').length}</span>
-                </Button>
+                </div>
+                <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                  <span>{formatTimeAgo(new Date(take.createdAt))}</span>
+                  <span>·</span>
+                  <Link
+                    href={`/k/${take.community.slug}`}
+                    className="hover:underline"
+                  >
+                    {take.community.parent ? (
+                      <>
+                        <span>{take.community.parent.name}</span>
+                        <span className="mx-1">{'>'}</span>
+                        <span>{take.community.name}</span>
+                      </>
+                    ) : (
+                      take.community.name
+                    )}
+                  </Link>
+                </div>
               </div>
-              <Link 
+            </div>
+
+            {/* Take content */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <h2 className="text-2xl font-bold">{take.title}</h2>
+                {verifiedCount > 0 && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <div className="flex items-center gap-1">
+                          <CheckCircle2 className="h-5 w-5 text-blue-500" />
+                          <span className="text-xs font-bold text-blue-500">{verifiedCount}x</span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{getTooltipText()}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+              </div>
+              {take.content && (
+                <p className="text-muted-foreground text-lg">{take.content}</p>
+              )}
+            </div>
+
+            {/* Voting buttons */}
+            <div className="voting-buttons flex items-center justify-center gap-8">
+              <Button
+                variant={userVote === 'UP' ? 'default' : 'outline'}
+                size="lg"
+                className={cn(
+                  "flex items-center gap-2 px-6 transition-colors",
+                  userVote === 'UP' && "bg-purple-500 hover:bg-purple-600 text-white"
+                )}
+                onClick={() => onVote('UP')}
+              >
+                <ThumbsUp className="h-6 w-6" />
+                <span className="font-medium">{take.votes.filter(v => v.type === 'UP').length}</span>
+              </Button>
+              <Button
+                variant={userVote === 'DOWN' ? 'default' : 'outline'}
+                size="lg"
+                className={cn(
+                  "flex items-center gap-2 px-6 transition-colors",
+                  userVote === 'DOWN' && "bg-red-500 hover:bg-red-600 text-white"
+                )}
+                onClick={() => onVote('DOWN')}
+              >
+                <ThumbsDown className="h-6 w-6" />
+                <span className="font-medium">{take.votes.filter(v => v.type === 'DOWN').length}</span>
+              </Button>
+            </div>
+
+            {/* Comments link */}
+            <div className="flex justify-center">
+              <Link
                 href={`/take/${take.id}`}
-                className="inline-flex items-center gap-2 text-base text-muted-foreground hover:text-foreground transition-colors group"
+                className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
               >
                 <MessageSquare className="h-5 w-5" />
-                <span>{take._count?.comments || 0} comments</span>
-                <ChevronRight className="h-5 w-5 group-hover:translate-x-0.5 transition-transform" />
+                <span>{take._count.comments} comments</span>
               </Link>
             </div>
           </div>
-        </div>
-      </Card>
-    </a.div>
+        </Card>
+      </a.div>
+    </div>
   )
 }

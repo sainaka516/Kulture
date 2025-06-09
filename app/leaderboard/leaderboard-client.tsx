@@ -16,6 +16,7 @@ interface LeaderboardUser {
   points: number
   verifiedTakes: number
   multiVerifiedTakes: number
+  maxVerificationsOnSingleTake: number
 }
 
 interface WorstTake {
@@ -148,7 +149,7 @@ export default function LeaderboardClient() {
                         <span className="flex items-center gap-1">
                           {user.multiVerifiedTakes} multi-verified
                           <Badge variant="secondary" className="h-4 px-1 text-xs">
-                            2x
+                            {user.maxVerificationsOnSingleTake}x
                           </Badge>
                         </span>
                       </>

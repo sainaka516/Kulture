@@ -13,6 +13,22 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'Kulture',
   description: 'A modern social platform',
+  manifest: '/manifest.json',
+  icons: {
+    apple: '/icons/icon-192x192.png',
+  },
+  themeColor: '#000000',
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Kulture',
+  },
 }
 
 export default function RootLayout({

@@ -40,82 +40,60 @@ export async function GET(
   { params }: { params: { slug: string } }
 ) {
   try {
-    console.log('🚀 Starting request for kulture:', params.slug)
     const session = await getServerSession(authOptions)
-    const userId = session?.user?.id
+    const { searchParams } = new URL(request.url)
+    const cursor = searchParams.get('cursor')
+    const limit = parseInt(searchParams.get('limit') || '10')
 
-    // First, get the community with full hierarchy
+    // Get the community
     const community = await prisma.community.findUnique({
       where: { slug: params.slug },
       include: {
         parent: {
           include: {
-            parent: true
-          }
-        },
-        children: {
-          include: {
-            children: {
+            parent: {
               include: {
-                takes: {
+                parent: true,
+                _count: {
                   select: {
-                    id: true,
-                    title: true
+                    members: true
                   }
+                }
+              },
+              _count: {
+                select: {
+                  members: true
                 }
               }
             },
-            takes: {
+            _count: {
               select: {
-                id: true,
-                title: true
+                members: true
               }
             }
           }
         },
-        takes: {
+        _count: {
           select: {
-            id: true,
-            title: true
+            members: true
           }
         }
       }
     })
 
     if (!community) {
-      console.error('❌ Community not found:', params.slug)
       return new NextResponse('Community not found', { status: 404 })
     }
 
-    console.log('📁 Found community hierarchy:', {
-      name: community.name,
-      id: community.id,
-      parentKulture: community.parent?.name,
-      grandparentKulture: community.parent?.parent?.name,
-      directTakes: community.takes.length,
-      children: community.children.map(c => ({
-        name: c.name,
-        takes: c.takes.length,
-        children: c.children.map(gc => ({
-          name: gc.name,
-          takes: gc.takes.length
-        }))
-      }))
-    })
-
-    // Get all descendant community IDs using recursive CTE
-    const descendantIds = await getAllDescendantIds(community.id)
-    const allRelevantIds = [community.id, ...descendantIds]
-
-    console.log('🎯 Will fetch takes from these communities:', {
-      currentKulture: community.name,
-      communityIds: allRelevantIds
-    })
-
-    // Get takes from parent and all descendants
+    // Get takes for the community
     const takes = await prisma.take.findMany({
       where: {
-        communityId: { in: allRelevantIds }
+        communityId: community.id
+      },
+      take: limit,
+      ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+      orderBy: {
+        createdAt: 'desc'
       },
       include: {
         author: {
@@ -123,20 +101,29 @@ export async function GET(
             id: true,
             name: true,
             username: true,
-            verified: true,
-            image: true
+            image: true,
+            verified: true
           }
         },
         community: {
-          select: {
-            id: true,
-            name: true,
-            slug: true,
+          include: {
             parent: {
-              select: {
-                id: true,
-                name: true,
-                slug: true,
+              include: {
+                parent: {
+                  include: {
+                    parent: true,
+                    _count: {
+                      select: {
+                        members: true
+                      }
+                    }
+                  },
+                  _count: {
+                    select: {
+                      members: true
+                    }
+                  }
+                },
                 _count: {
                   select: {
                     members: true
@@ -154,49 +141,34 @@ export async function GET(
         votes: true,
         _count: {
           select: {
-            comments: true,
-            votes: true
+            comments: true
           }
         }
-      },
-      orderBy: {
-        createdAt: 'desc'
       }
     })
 
-    // Log the takes we found grouped by community
-    const takesByKulture = takes.reduce((acc, take) => {
-      const kultureName = take.community.name
-      if (!acc[kultureName]) {
-        acc[kultureName] = []
-      }
-      acc[kultureName].push({
-        id: take.id,
-        title: take.title
-      })
-      return acc
-    }, {} as Record<string, Array<{ id: string, title: string }>>)
-
-    console.log('📝 Takes found by Kulture:', takesByKulture)
-
-    // Transform takes to include vote information
+    // Transform takes to include currentUserId and userVote
     const transformedTakes = takes.map(take => ({
       ...take,
+      currentUserId: session?.user?.id,
+      userVote: session?.user?.id 
+        ? take.votes.find(vote => vote.userId === session.user.id)?.type || null
+        : null,
       _count: {
         ...take._count,
         upvotes: take.votes.filter(vote => vote.type === 'UP').length,
-        downvotes: take.votes.filter(vote => vote.type === 'DOWN').length,
-      },
-      currentUserId: userId,
-      userVote: userId 
-        ? take.votes.find(vote => vote.userId === userId)?.type || null
-        : null
+        downvotes: take.votes.filter(vote => vote.type === 'DOWN').length
+      }
     }))
 
-    console.log('✨ Final take count:', transformedTakes.length)
-    return NextResponse.json(transformedTakes)
+    return NextResponse.json({
+      takes: transformedTakes,
+      nextCursor: takes.length === limit ? takes[takes.length - 1].id : undefined
+    })
   } catch (error) {
-    console.error('❌ Error:', error)
+    console.error('[COMMUNITY_TAKES_GET]', error)
     return new NextResponse('Internal Error', { status: 500 })
+  }
+} 
   }
 } 

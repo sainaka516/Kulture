@@ -2,10 +2,9 @@
 
 import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
-import { MessageSquare, CheckCircle2 } from 'lucide-react'
+import { MessageSquare, CheckCircle2, ThumbsUp, ThumbsDown } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { UserAvatar } from '@/components/ui/user-avatar'
-import VoteButtons from '@/components/VoteButtons'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
@@ -71,13 +70,13 @@ interface ExtendedTake extends Omit<Take, 'community'> {
 
 interface TakeCardProps {
   take: ExtendedTake;
-  onVote?: (takeId: string, type: 'UP' | 'DOWN') => void;
+  onVote?: (takeId: string, type: 'UP' | 'DOWN') => Promise<void>;
   showCommunity?: boolean;
   currentKultureSlug?: string;
   onViewed?: () => void;
 }
 
-export default function TakeCard({ take, currentKultureSlug }: TakeCardProps) {
+export default function TakeCard({ take, currentKultureSlug, onVote }: TakeCardProps) {
   const isAuthor = take.author.id === take.currentUserId
 
   // Calculate vote score with null check
@@ -257,18 +256,37 @@ export default function TakeCard({ take, currentKultureSlug }: TakeCardProps) {
   const userVoteType = take.userVote || null // Ensure userVote is never undefined
 
   return (
-    <Card className="hover:border-foreground/10 transition-colors">
-      <div className="flex">
+    <Card className="relative overflow-hidden">
+      <div className="flex min-h-[200px]">
         {/* Vote buttons */}
-        <div className="px-1">
-          <VoteButtons
-            takeId={take.id}
-            initialVoteType={take.userVote || null}
-            initialUpvotes={take._count.upvotes}
-            initialDownvotes={take._count.downvotes}
-          />
+        <div className="px-4 flex items-center justify-center border-r">
+          <div className="flex flex-col items-center gap-2">
+            <Button
+              variant={take.userVote === 'UP' ? 'default' : 'outline'}
+              size="lg"
+              className={cn(
+                "flex items-center gap-2 px-6 transition-colors",
+                take.userVote === 'UP' && "bg-purple-500 hover:bg-purple-600 text-white"
+              )}
+              onClick={() => onVote?.(take.id, 'UP')}
+            >
+              <ThumbsUp className="h-6 w-6" />
+              <span className="font-medium">{take._count.upvotes}</span>
+            </Button>
+            <Button
+              variant={take.userVote === 'DOWN' ? 'default' : 'outline'}
+              size="lg"
+              className={cn(
+                "flex items-center gap-2 px-6 transition-colors",
+                take.userVote === 'DOWN' && "bg-red-500 hover:bg-red-600 text-white"
+              )}
+              onClick={() => onVote?.(take.id, 'DOWN')}
+            >
+              <ThumbsDown className="h-6 w-6" />
+              <span className="font-medium">{take._count.downvotes}</span>
+            </Button>
+          </div>
         </div>
-
         <div className="flex-1 p-4">
           {/* Header */}
           <div className="flex items-center justify-between">

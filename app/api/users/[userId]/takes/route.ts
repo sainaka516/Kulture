@@ -34,36 +34,21 @@ export async function GET(
           },
         },
         community: {
-          select: {
-            id: true,
-            name: true,
-            slug: true,
+          include: {
             parent: {
-              select: {
-                id: true,
-                name: true,
-                slug: true,
+              include: {
                 parent: {
-                  select: {
-                    id: true,
-                    name: true,
-                    slug: true,
-                    parent: {
-                      select: {
-                        id: true,
-                        name: true,
-                        slug: true,
-                        _count: {
-                          select: {
-                            members: true
-                          }
-                        }
-                      }
-                    },
+                  include: {
+                    parent: true,
                     _count: {
                       select: {
                         members: true
                       }
+                    }
+                  },
+                  _count: {
+                    select: {
+                      members: true
                     }
                   }
                 },
@@ -79,7 +64,7 @@ export async function GET(
                 members: true
               }
             }
-          },
+          }
         },
         votes: true,
         _count: {

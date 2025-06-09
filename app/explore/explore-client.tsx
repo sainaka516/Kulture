@@ -89,7 +89,7 @@ export default function ExploreClient({ initialTakes }: ExploreClientProps) {
   const refreshTakes = async () => {
     setIsLoading(true)
     try {
-      const response = await fetch('/api/takes')
+      const response = await fetch('/api/takes/refresh')
       const data = await response.json()
       setTakes(data.takes)
       setPage(1)
@@ -123,7 +123,7 @@ export default function ExploreClient({ initialTakes }: ExploreClientProps) {
 
   return (
     <div className="space-y-6 min-h-screen">
-      <div className="flex justify-center mb-2">
+      <div className="flex justify-center gap-2 mb-2">
         <Button
           variant={showingHistory ? "outline" : "default"}
           onClick={toggleHistory}
@@ -131,6 +131,23 @@ export default function ExploreClient({ initialTakes }: ExploreClientProps) {
         >
           {showingHistory ? "Show New Takes" : "View Take History"}
         </Button>
+        {!showingHistory && (
+          <Button
+            onClick={refreshTakes}
+            disabled={isLoading}
+            variant="outline"
+            className="min-w-[120px]"
+          >
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh
+              </>
+            )}
+          </Button>
+        )}
       </div>
 
       {showingHistory ? (
@@ -162,13 +179,15 @@ export default function ExploreClient({ initialTakes }: ExploreClientProps) {
         </div>
       ) : (
         <div className="space-y-6">
-          <TakeFeed
-            takes={takes}
-            communitySlug={null}
-            onTakeViewed={markTakeAsViewed}
-            defaultView="swipe"
-            showViewSwitcher={false}
-          />
+          <div className="max-w-2xl mx-auto">
+            <TakeFeed
+              takes={takes}
+              communitySlug={null}
+              onTakeViewed={markTakeAsViewed}
+              defaultView="swipe"
+              showViewSwitcher={false}
+            />
+          </div>
           {hasMore && takes.length > 0 && (
             <div className="flex justify-center gap-4 mt-4">
               <Button

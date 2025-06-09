@@ -33,6 +33,17 @@ export async function GET() {
                     members: true,
                   },
                 },
+                parent: {
+                  select: {
+                    id: true,
+                    name: true,
+                    _count: {
+                      select: {
+                        members: true,
+                      },
+                    },
+                  },
+                },
               },
             },
           },
@@ -44,45 +55,91 @@ export async function GET() {
     // Calculate verified takes for each user
     const userPoints = takes.reduce((acc, take) => {
       const upvotes = take.votes.filter(vote => vote.type === 'UP').length
+      const downvotes = take.votes.filter(vote => vote.type === 'DOWN').length
+      const voteScore = upvotes - downvotes
       
-      // Check verification in current community
-      const isVerifiedInCurrent = take.community._count?.members 
-        ? upvotes >= Math.ceil(take.community._count.members * 0.5)
-        : false
+      // Get all communities to check (current and parent chain)
+      const communitiesToCheck = []
+      
+      // Add current community
+      if (take.community._count?.members) {
+        communitiesToCheck.push({
+          name: take.community.name,
+          memberCount: take.community._count.members
+        })
+      }
 
-      // Check verification in parent community if it exists
-      const isVerifiedInParent = take.community.parent?._count?.members 
-        ? upvotes >= Math.ceil(take.community.parent._count.members * 0.5)
-        : false
+      // Add parent communities
+      let parentCommunity = take.community.parent
+      while (parentCommunity) {
+        if (parentCommunity._count?.members) {
+          communitiesToCheck.push({
+            name: parentCommunity.name,
+            memberCount: parentCommunity._count.members
+          })
+        }
+        parentCommunity = parentCommunity.parent
+      }
 
-      // Calculate points for this take
-      const pointsForTake = (isVerifiedInCurrent ? 1 : 0) + (isVerifiedInParent ? 1 : 0)
+      // Calculate verifications
+      const verifiedCommunities = communitiesToCheck.filter(community => {
+        const requiredVotes = Math.ceil(community.memberCount * 0.5)
+        return voteScore >= requiredVotes
+      })
 
-      if (pointsForTake > 0) {
+      const totalPoints = verifiedCommunities.length
+
+      if (totalPoints > 0) {
         const userId = take.author.id
         acc[userId] = acc[userId] || {
           id: userId,
           name: take.author.name,
+          username: take.author.username,
           image: take.author.image,
           points: 0,
           verifiedTakes: 0,
           multiVerifiedTakes: 0,
+          totalVerifications: 0,
+          maxVerificationsOnSingleTake: 0
         }
-        acc[userId].points += pointsForTake
+
+        // Update user stats
+        acc[userId].points += totalPoints
         acc[userId].verifiedTakes += 1
-        if (pointsForTake > 1) {
+        acc[userId].totalVerifications += totalPoints
+        
+        // Update multi-verification stats
+        if (totalPoints > 1) {
           acc[userId].multiVerifiedTakes += 1
         }
+        
+        // Track the highest number of verifications on a single take
+        if (totalPoints > acc[userId].maxVerificationsOnSingleTake) {
+          acc[userId].maxVerificationsOnSingleTake = totalPoints
+        }
+
+        // Debug logging
+        console.log(`Take ${take.id} by user ${userId}:`, {
+          upvotes,
+          downvotes,
+          voteScore,
+          verifiedCommunities: verifiedCommunities.map(c => c.name),
+          totalPoints,
+          userStats: acc[userId]
+        })
       }
 
       return acc
     }, {} as Record<string, {
       id: string
       name: string | null
+      username: string
       image: string | null
       points: number
       verifiedTakes: number
       multiVerifiedTakes: number
+      totalVerifications: number
+      maxVerificationsOnSingleTake: number
     }>)
 
     // Convert to array and sort by points

@@ -153,7 +153,7 @@ export default function CommunityClient({ community }: CommunityClientProps) {
     if (!session) {
       toast({
         title: 'Sign in required',
-        description: 'You must be signed in to join communities.',
+        description: 'You must be signed in to join Kultures.',
         variant: 'destructive',
       })
       return
@@ -168,20 +168,20 @@ export default function CommunityClient({ community }: CommunityClientProps) {
       })
 
       if (!response.ok) {
-        throw new Error(`Failed to ${isMember ? 'leave' : 'join'} community`)
+        throw new Error(`Failed to ${isMember ? 'leave' : 'join'} Kulture`)
       }
 
       setIsMember(!isMember)
       toast({
         title: 'Success',
-        description: `You have ${isMember ? 'left' : 'joined'} the community.`,
+        description: `You have ${isMember ? 'left' : 'joined'} the Kulture.`,
       })
 
       router.refresh()
     } catch (error) {
       toast({
         title: 'Error',
-        description: `Failed to ${isMember ? 'leave' : 'join'} community. Please try again.`,
+        description: `Failed to ${isMember ? 'leave' : 'join'} Kulture. Please try again.`,
         variant: 'destructive',
       })
     } finally {
@@ -211,7 +211,7 @@ export default function CommunityClient({ community }: CommunityClientProps) {
                   {isMember ? 'Leaving...' : 'Joining...'}
                 </>
               ) : (
-                isMember ? 'Leave Community' : 'Join Community'
+                isMember ? 'Leave Kulture' : 'Join Kulture'
               )}
             </Button>
             <Link href={`/create-kulture?parent=${community.slug}`}>

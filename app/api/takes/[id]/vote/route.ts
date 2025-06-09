@@ -70,32 +70,105 @@ export async function POST(
       })
     }
 
-    // Get updated take with all votes
-    const updatedTake = await prisma.take.findUnique({
-      where: {
-        id: params.id,
-      },
-      include: {
-        votes: true,
-      },
-    })
+    // Get updated take with all votes and community data
+    const [updatedTake, commentsCount] = await Promise.all([
+      prisma.take.findUnique({
+        where: {
+          id: params.id,
+        },
+        include: {
+          author: {
+            select: {
+              id: true,
+              name: true,
+              username: true,
+              image: true,
+              verified: true,
+            },
+          },
+          community: {
+            include: {
+              members: true,
+              parent: {
+                include: {
+                  members: true,
+                  parent: {
+                    include: {
+                      members: true,
+                      parent: {
+                        include: {
+                          members: true
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          votes: true,
+        },
+      }),
+      prisma.comment.count({
+        where: {
+          takeId: params.id
+        }
+      })
+    ])
 
     if (!updatedTake) {
       return new NextResponse('Take not found after update', { status: 404 })
     }
 
-    // Transform the response to match the expected format
-    const response = {
-      id: updatedTake.id,
-      votes: updatedTake.votes,
+    // Transform the data to include member counts
+    const transformedTake = {
+      ...updatedTake,
+      currentUserId: session.user.id,
+      userVote: updatedTake.votes.find(v => v.userId === session.user.id)?.type || null,
+      community: {
+        ...updatedTake.community,
+        _count: {
+          members: updatedTake.community.members.length
+        },
+        parent: updatedTake.community.parent ? {
+          ...updatedTake.community.parent,
+          _count: {
+            members: updatedTake.community.parent.members.length
+          },
+          parent: updatedTake.community.parent.parent ? {
+            ...updatedTake.community.parent.parent,
+            _count: {
+              members: updatedTake.community.parent.parent.members.length
+            },
+            parent: updatedTake.community.parent.parent.parent ? {
+              ...updatedTake.community.parent.parent.parent,
+              _count: {
+                members: updatedTake.community.parent.parent.parent.members.length
+              }
+            } : null
+          } : null
+        } : null
+      },
       _count: {
+        comments: commentsCount,
         upvotes: updatedTake.votes.filter(v => v.type === 'UP').length,
         downvotes: updatedTake.votes.filter(v => v.type === 'DOWN').length,
-      },
-      userVote: updatedTake.votes.find(v => v.userId === session.user.id)?.type || null
+      }
     }
 
-    return NextResponse.json(response)
+    // Remove the members arrays from the response to keep it clean
+    delete transformedTake.community.members
+    if (transformedTake.community.parent) {
+      delete transformedTake.community.parent.members
+      if (transformedTake.community.parent.parent) {
+        delete transformedTake.community.parent.parent.members
+        if (transformedTake.community.parent.parent.parent) {
+          delete transformedTake.community.parent.parent.parent.members
+        }
+      }
+    }
+
+    return NextResponse.json(transformedTake)
   } catch (error) {
     console.error('[TAKE_VOTE_POST]', error)
     return new NextResponse('Internal Error', { status: 500 })

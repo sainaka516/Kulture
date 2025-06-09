@@ -3,132 +3,104 @@
 import { useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { ThumbsUp, ThumbsDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
 
 interface VoteButtonsProps {
-  takeId: string
-  initialVoteType: 'UP' | 'DOWN' | null
-  initialUpvotes: number
-  initialDownvotes: number
-  className?: string
+  takeId: string;
+  userVote: 'UP' | 'DOWN' | null;
+  upvotes: number;
+  downvotes: number;
+  onVote?: (takeId: string, type: 'UP' | 'DOWN') => Promise<void>;
 }
 
 export default function VoteButtons({
   takeId,
-  initialVoteType,
-  initialUpvotes,
-  initialDownvotes,
-  className,
+  userVote,
+  upvotes,
+  downvotes,
+  onVote,
 }: VoteButtonsProps) {
   const { data: session } = useSession()
   const { toast } = useToast()
-  const router = useRouter()
-  const [isLoading, setIsLoading] = useState(false)
-  const [userVote, setUserVote] = useState<'UP' | 'DOWN' | null>(initialVoteType)
-  const [upvotes, setUpvotes] = useState(initialUpvotes)
-  const [downvotes, setDownvotes] = useState(initialDownvotes)
 
-  async function vote(type: 'UP' | 'DOWN') {
+  const handleVote = async (type: 'UP' | 'DOWN') => {
     if (!session) {
-      router.push('/sign-in')
+      toast({
+        title: 'Sign in required',
+        description: 'You must be signed in to vote.',
+        variant: 'destructive',
+      })
       return
     }
 
-    if (isLoading) return
+    if (!onVote) return
 
-    setIsLoading(true)
     try {
-      const response = await fetch(`/api/takes/${takeId}/vote`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ type }),
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to vote')
-      }
-
-      const data = await response.json()
-      
-      // Update local state based on the response
-      const newUpvotes = data.votes.filter((v: any) => v.type === 'UP').length
-      const newDownvotes = data.votes.filter((v: any) => v.type === 'DOWN').length
-      const newUserVote = data.votes.find((v: any) => v.userId === session.user.id)?.type || null
-
-      setUpvotes(newUpvotes)
-      setDownvotes(newDownvotes)
-      setUserVote(newUserVote)
-
-      // Create notification for the take's author
-      const isRemovingVote = userVote === type
-      if (!isRemovingVote) {
-        try {
-          await fetch('/api/notifications', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              type: type === 'UP' ? 'TAKE_UPVOTED' : 'TAKE_DOWNVOTED',
-              takeId: takeId,
-            }),
-          })
-        } catch (error) {
-          console.error('Error creating vote notification:', error)
-        }
-
-        toast({
-          title: 'Success',
-          description: `You ${type === 'UP' ? 'agreed with' : 'disagreed with'} this take`,
-        })
-      }
+      await onVote(takeId, type)
     } catch (error) {
+      console.error('Error voting:', error)
       toast({
         title: 'Error',
         description: 'Failed to vote. Please try again.',
         variant: 'destructive',
       })
-    } finally {
-      setIsLoading(false)
     }
   }
 
   return (
-    <div className={cn('flex items-center gap-4', className)}>
+    <div className="flex flex-col items-center gap-1">
       <Button
-        variant="outline"
-        size="sm"
-        onClick={(e) => {
-          e.stopPropagation()
-          vote('UP')
-        }}
+        variant={userVote === 'UP' ? 'default' : 'outline'}
+        size="icon"
         className={cn(
-          'flex items-center gap-2',
-          userVote === 'UP' && 'bg-purple-600 hover:bg-purple-700 text-white'
+          "h-8 w-8 transition-colors",
+          userVote === 'UP' && "bg-purple-500 hover:bg-purple-600 text-white"
         )}
-        disabled={isLoading}
+        onClick={() => handleVote('UP')}
       >
-        <ThumbsUp className="h-4 w-4" />
-        <span>{upvotes}</span>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="h-4 w-4"
+        >
+          <path d="M7 10v12" />
+          <path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2h0a3.13 3.13 0 0 1 3 3.88Z" />
+        </svg>
       </Button>
+      <span className="text-sm font-medium">{upvotes - downvotes}</span>
       <Button
-        variant="outline"
-        size="sm"
-        onClick={(e) => {
-          e.stopPropagation()
-          vote('DOWN')
-        }}
+        variant={userVote === 'DOWN' ? 'default' : 'outline'}
+        size="icon"
         className={cn(
-          'flex items-center gap-2',
-          userVote === 'DOWN' && 'bg-red-600 hover:bg-red-700 text-white'
+          "h-8 w-8 transition-colors",
+          userVote === 'DOWN' && "bg-red-500 hover:bg-red-600 text-white"
         )}
-        disabled={isLoading}
+        onClick={() => handleVote('DOWN')}
       >
-        <ThumbsDown className="h-4 w-4" />
-        <span>{downvotes}</span>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="h-4 w-4"
+        >
+          <path d="M17 14V2" />
+          <path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22h0a3.13 3.13 0 0 1-3-3.88Z" />
+        </svg>
       </Button>
     </div>
   )

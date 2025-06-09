@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { format } from 'date-fns'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import TakeFeed from '@/components/TakeFeed'
+import { Take } from '@/lib/types'
 
 interface UserStats {
   totalTakes: number
@@ -24,7 +25,7 @@ interface UserStats {
 export default function ProfilePage() {
   const { data: session, status } = useSession()
   const router = useRouter()
-  const [takes, setTakes] = useState([])
+  const [takes, setTakes] = useState<Take[]>([])
   const [userStats, setUserStats] = useState<UserStats | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
@@ -40,14 +41,14 @@ export default function ProfilePage() {
         .then((response) => response.json())
         .then((data) => {
           // Transform takes to include currentUserId and userVote
-          const transformedTakes = data.map(take => ({
+          const transformedTakes = data.map((take: Take) => ({
             ...take,
             currentUserId: session.user.id,
-            userVote: take.votes.find(vote => vote.userId === session.user.id)?.type || null,
+            userVote: take.votes?.find(vote => vote.userId === session.user.id)?.type || null,
             _count: {
               ...take._count,
-              upvotes: take.votes.filter(vote => vote.type === 'UP').length,
-              downvotes: take.votes.filter(vote => vote.type === 'DOWN').length
+              upvotes: take.votes?.filter(vote => vote.type === 'UP').length || 0,
+              downvotes: take.votes?.filter(vote => vote.type === 'DOWN').length || 0
             }
           }))
           setTakes(transformedTakes)

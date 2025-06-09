@@ -8,6 +8,8 @@ import TakeCard from '@/components/TakeCard'
 import { Take } from '@/lib/types'
 import { Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useToast } from '@/hooks/use-toast'
+import { useSession } from 'next-auth/react'
 
 interface TakeFeedProps {
   takes: Take[]
@@ -29,6 +31,8 @@ export default function TakeFeed({
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const view = searchParams.get('view') || defaultView
+  const { toast } = useToast()
+  const { data: session } = useSession()
 
   const [localTakes, setLocalTakes] = useState<Take[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -53,6 +57,71 @@ export default function TakeFeed({
       if (!communitySlug) {
         setLocalTakes(prev => prev.filter(take => take.id !== takeId))
       }
+    }
+  }
+
+  // Shared vote handler
+  const handleVote = async (takeId: string, type: 'UP' | 'DOWN') => {
+    if (!session) {
+      toast({
+        title: 'Sign in required',
+        description: 'You must be signed in to vote.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/takes/${takeId}/vote`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type,
+          communityId,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to vote')
+      }
+
+      const updatedTake = await response.json()
+
+      // Validate the updated take has required data
+      if (!updatedTake.community) {
+        console.error('Updated take missing community data:', updatedTake)
+        toast({
+          title: 'Error',
+          description: 'Failed to update take. Please try again.',
+          variant: 'destructive',
+        })
+        return
+      }
+
+      // Update the take in localTakes
+      setLocalTakes(prev =>
+        prev.map(take =>
+          take.id === updatedTake.id ? updatedTake : take
+        )
+      )
+
+      // Only show success message if the vote was added or changed
+      const existingTake = localTakes.find(t => t.id === takeId)
+      const existingVote = existingTake?.votes.find(v => v.userId === session.user.id)?.type
+      const isRemovingVote = existingVote === type
+      if (!isRemovingVote) {
+        toast({
+          title: 'Success',
+          description: `You ${type === 'UP' ? 'agreed with' : 'disagreed with'} this take`,
+        })
+      }
+    } catch (error) {
+      console.error('Error voting:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to vote. Please try again.',
+        variant: 'destructive',
+      })
     }
   }
 
@@ -109,6 +178,7 @@ export default function TakeFeed({
           communityId={communityId}
           communitySlug={communitySlug}
           onTakeViewed={handleTakeViewed}
+          onVote={handleVote}
         />
       ) : (
         <div className="space-y-4">
@@ -118,6 +188,7 @@ export default function TakeFeed({
               take={take}
               currentKultureSlug={communitySlug}
               onViewed={() => handleTakeViewed(take.id)}
+              onVote={handleVote}
             />
           ))}
         </div>

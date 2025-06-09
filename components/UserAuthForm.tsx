@@ -50,46 +50,79 @@ export default function UserAuthForm({
     try {
       if (isSignUp) {
         // Handle signup
+        console.log('[AUTH] Starting signup process')
         const response = await fetch("/api/auth/signup", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(data),
+          body: JSON.stringify({
+            ...data,
+            username: data.username.toLowerCase()
+          }),
         })
+
+        const result = await response.json()
+        console.log('[AUTH] Signup response:', { status: response.status, ...result })
 
         if (!response.ok) {
-          const error = await response.json()
-          throw new Error(error.error)
+          throw new Error(result.error || 'Failed to create account')
         }
+
+        toast.success('Account created successfully! Signing you in...')
 
         // After successful signup, sign in
-        const result = await signIn("credentials", {
-          username: data.username,
+        console.log('[AUTH] Attempting sign in after signup')
+        const signInResult = await signIn("credentials", {
+          username: data.username.toLowerCase(),
           password: data.password,
           redirect: false,
         })
 
-        if (result?.error) {
-          throw new Error("Failed to sign in")
+        console.log('[AUTH] Sign in result after signup:', signInResult)
+
+        if (signInResult?.error) {
+          throw new Error("Failed to sign in after signup")
         }
 
-        router.push("/")
+        toast.success('Signed in successfully!')
+        
+        // Wait a moment for the session to be established
+        await new Promise(resolve => setTimeout(resolve, 2000))
+        
+        router.push("/explore")
       } else {
         // Handle login
+        console.log('[AUTH] Starting login process:', { 
+          username: data.username.toLowerCase()
+        })
+        
         const result = await signIn("credentials", {
-          username: data.username,
+          username: data.username.toLowerCase(),
           password: data.password,
           redirect: false,
         })
 
+        console.log('[AUTH] Login result:', result)
+
         if (result?.error) {
-          throw new Error("Invalid credentials")
+          if (result.error === "CredentialsSignin") {
+            throw new Error("Invalid username or password")
+          } else {
+            console.error('[AUTH] Unexpected login error:', result.error)
+            throw new Error(result.error)
+          }
         }
 
-        router.push("/")
+        toast.success('Signed in successfully!')
+        
+        // Wait a moment for the session to be established
+        await new Promise(resolve => setTimeout(resolve, 2000))
+        
+        router.push("/explore")
       }
     } catch (error) {
+      console.error('[AUTH] Authentication error:', error)
       toast.error(error instanceof Error ? error.message : "Something went wrong")
     } finally {
       setIsLoading(false)
@@ -99,8 +132,9 @@ export default function UserAuthForm({
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true)
     try {
-      await signIn("google", { callbackUrl: "/" })
+      await signIn("google", { callbackUrl: "/explore" })
     } catch (error) {
+      console.error('[AUTH] Google sign in error:', error)
       toast.error("Something went wrong with Google sign in")
     } finally {
       setIsGoogleLoading(false)
@@ -113,11 +147,11 @@ export default function UserAuthForm({
         <div className="grid gap-2">
           <div className="grid gap-1">
             <Label htmlFor="username">
-              Username {isSignUp && "or Email"}
+              {isSignUp ? "Username" : "Username or Email"}
             </Label>
             <Input
               id="username"
-              placeholder={isSignUp ? "johndoe" : "Enter your username"}
+              placeholder={isSignUp ? "Choose a username" : "Enter your username or email"}
               type="text"
               autoCapitalize="none"
               autoComplete="username"
@@ -136,7 +170,7 @@ export default function UserAuthForm({
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
-                placeholder="john@example.com"
+                placeholder="Enter your email"
                 type="email"
                 autoCapitalize="none"
                 autoComplete="email"
@@ -168,11 +202,11 @@ export default function UserAuthForm({
               </p>
             )}
           </div>
-          <Button disabled={isLoading}>
+          <Button disabled={isLoading || isGoogleLoading}>
             {isLoading && (
               <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
             )}
-            {isSignUp ? "Sign Up" : "Sign In"}
+            {isSignUp ? "Create Account" : "Sign In"}
           </Button>
         </div>
       </form>

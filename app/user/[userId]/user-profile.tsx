@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Mail, Calendar, Trophy, MessageSquare, Share2, Users2, Heart } from 'lucide-react'
+import { Mail, Calendar, Trophy, MessageSquare, Share2, Users2, Heart, Layers } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import TakeFeed from '@/components/TakeFeed'
 import FriendRequestButton from '@/components/FriendRequestButton'
@@ -54,7 +54,7 @@ export default function UserProfile({ user, session, showEmail }: UserProfilePro
     {
       label: 'Kultures',
       value: currentUser._count.communities,
-      icon: Heart
+      icon: Layers
     },
     {
       label: 'Friends',
