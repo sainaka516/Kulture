@@ -104,8 +104,7 @@ export default function CommunityClient({ community }: CommunityClientProps) {
     parent: community.parent?.name,
     childrenCount: community.children.length,
     children: community.children.map(c => ({
-      name: c.name,
-      grandchildren: c.children?.map(gc => gc.name)
+      name: c.name
     })),
     takesCount: community.takes.length,
     takes: community.takes.map(t => ({
