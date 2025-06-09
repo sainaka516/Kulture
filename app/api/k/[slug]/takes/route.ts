@@ -45,37 +45,19 @@ export async function GET(
     const cursor = searchParams.get('cursor')
     const limit = parseInt(searchParams.get('limit') || '10')
 
-    // Get the community
+    // Get the community with its hierarchy
     const community = await prisma.community.findUnique({
-      where: { slug: params.slug },
+      where: { 
+        slug: params.slug 
+      },
       include: {
         parent: {
           include: {
             parent: {
               include: {
-                parent: true,
-                _count: {
-                  select: {
-                    members: true
-                  }
-                }
-              },
-              _count: {
-                select: {
-                  members: true
-                }
-              }
-            },
-            _count: {
-              select: {
-                members: true
+                parent: true
               }
             }
-          }
-        },
-        _count: {
-          select: {
-            members: true
           }
         }
       }
@@ -85,7 +67,7 @@ export async function GET(
       return new NextResponse('Community not found', { status: 404 })
     }
 
-    // Get takes for the community
+    // Get takes with related data
     const takes = await prisma.take.findMany({
       where: {
         communityId: community.id
@@ -111,29 +93,9 @@ export async function GET(
               include: {
                 parent: {
                   include: {
-                    parent: true,
-                    _count: {
-                      select: {
-                        members: true
-                      }
-                    }
-                  },
-                  _count: {
-                    select: {
-                      members: true
-                    }
-                  }
-                },
-                _count: {
-                  select: {
-                    members: true
+                    parent: true
                   }
                 }
-              }
-            },
-            _count: {
-              select: {
-                members: true
               }
             }
           }
