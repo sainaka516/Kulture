@@ -120,28 +120,32 @@ export async function POST(
       return new NextResponse('Take not found after update', { status: 404 })
     }
 
-    // Transform the data to include member counts
+    // Transform the data to include member counts but exclude members arrays
     const transformedTake = {
       ...updatedTake,
       currentUserId: session.user.id,
       userVote: updatedTake.votes.find(v => v.userId === session.user.id)?.type || null,
       community: {
-        ...updatedTake.community,
+        id: updatedTake.community.id,
+        name: updatedTake.community.name,
         _count: {
           members: updatedTake.community.members.length
         },
         parent: updatedTake.community.parent ? {
-          ...updatedTake.community.parent,
+          id: updatedTake.community.parent.id,
+          name: updatedTake.community.parent.name,
           _count: {
             members: updatedTake.community.parent.members.length
           },
           parent: updatedTake.community.parent.parent ? {
-            ...updatedTake.community.parent.parent,
+            id: updatedTake.community.parent.parent.id,
+            name: updatedTake.community.parent.parent.name,
             _count: {
               members: updatedTake.community.parent.parent.members.length
             },
             parent: updatedTake.community.parent.parent.parent ? {
-              ...updatedTake.community.parent.parent.parent,
+              id: updatedTake.community.parent.parent.parent.id,
+              name: updatedTake.community.parent.parent.parent.name,
               _count: {
                 members: updatedTake.community.parent.parent.parent.members.length
               }
@@ -153,18 +157,6 @@ export async function POST(
         comments: commentsCount,
         upvotes: updatedTake.votes.filter(v => v.type === 'UP').length,
         downvotes: updatedTake.votes.filter(v => v.type === 'DOWN').length,
-      }
-    }
-
-    // Remove the members arrays from the response to keep it clean
-    delete transformedTake.community.members
-    if (transformedTake.community.parent) {
-      delete transformedTake.community.parent.members
-      if (transformedTake.community.parent.parent) {
-        delete transformedTake.community.parent.parent.members
-        if (transformedTake.community.parent.parent.parent) {
-          delete transformedTake.community.parent.parent.parent.members
-        }
       }
     }
 
