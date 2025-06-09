@@ -103,6 +103,7 @@ async function getTakes() {
             _count: {
               select: {
                 comments: true,
+                votes: true
               }
             },
           },
@@ -191,6 +192,7 @@ async function getTakes() {
         _count: {
           select: {
             comments: true,
+            votes: true
           }
         },
       },
@@ -207,6 +209,11 @@ async function getTakes() {
         type: vote.type as 'UP' | 'DOWN',
         userId: vote.userId
       })),
+      _count: {
+        comments: take._count.comments,
+        upvotes: take.votes.filter(v => v.type === 'UP').length,
+        downvotes: take.votes.filter(v => v.type === 'DOWN').length
+      },
       community: {
         ...take.community,
         _count: {
