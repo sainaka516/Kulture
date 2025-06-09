@@ -35,33 +35,36 @@ export async function GET(
         },
         community: {
           include: {
+            _count: {
+              select: {
+                members: true
+              }
+            },
             parent: {
               include: {
-                parent: {
-                  include: {
-                    parent: true,
-                    _count: {
-                      select: {
-                        members: true
-                      }
-                    }
-                  },
-                  _count: {
-                    select: {
-                      members: true
-                    }
-                  }
-                },
                 _count: {
                   select: {
                     members: true
                   }
+                },
+                parent: {
+                  include: {
+                    _count: {
+                      select: {
+                        members: true
+                      }
+                    },
+                    parent: {
+                      include: {
+                        _count: {
+                          select: {
+                            members: true
+                          }
+                        }
+                      }
+                    }
+                  }
                 }
-              }
-            },
-            _count: {
-              select: {
-                members: true
               }
             }
           }
@@ -78,36 +81,13 @@ export async function GET(
       },
     })
 
-    // Transform takes to include proper counts and parent chain
+    // Transform takes to include vote counts
     const transformedTakes = takes.map(take => ({
       ...take,
-      community: {
-        ...take.community,
-        _count: {
-          ...take.community._count,
-          members: take.community._count?.members || 0
-        },
-        parent: take.community.parent ? {
-          ...take.community.parent,
-          parent: take.community.parent.parent ? {
-            ...take.community.parent.parent,
-            parent: take.community.parent.parent.parent ? {
-              ...take.community.parent.parent.parent,
-              _count: {
-                ...take.community.parent.parent.parent._count,
-                members: take.community.parent.parent.parent._count?.members || 0
-              }
-            } : null,
-            _count: {
-              ...take.community.parent.parent._count,
-              members: take.community.parent.parent._count?.members || 0
-            }
-          } : null,
-          _count: {
-            ...take.community.parent._count,
-            members: take.community.parent._count?.members || 0
-          }
-        } : null
+      _count: {
+        ...take._count,
+        upvotes: take.votes.filter(vote => vote.type === 'UP').length,
+        downvotes: take.votes.filter(vote => vote.type === 'DOWN').length,
       }
     }))
 
