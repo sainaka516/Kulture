@@ -1,6 +1,15 @@
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 
+type Community = {
+  id: string;
+  name: string;
+  _count: {
+    members: number;
+  } | null;
+  parent: Community | null;
+}
+
 export async function GET() {
   try {
     // Get all takes with their vote counts and community member counts
@@ -16,27 +25,21 @@ export async function GET() {
           },
         },
         community: {
-          select: {
-            id: true,
-            name: true,
+          include: {
             _count: {
               select: {
                 members: true,
               },
             },
             parent: {
-              select: {
-                id: true,
-                name: true,
+              include: {
                 _count: {
                   select: {
                     members: true,
                   },
                 },
                 parent: {
-                  select: {
-                    id: true,
-                    name: true,
+                  include: {
                     _count: {
                       select: {
                         members: true,
@@ -69,17 +72,21 @@ export async function GET() {
         })
       }
 
-      // Add parent communities
-      let parentCommunity = take.community.parent
-      while (parentCommunity) {
-        if (parentCommunity._count?.members) {
+      // Add parent communities recursively
+      function addParentCommunity(community: Community | null) {
+        if (!community?.parent) return;
+        
+        if (community.parent._count?.members) {
           communitiesToCheck.push({
-            name: parentCommunity.name,
-            memberCount: parentCommunity._count.members
-          })
+            name: community.parent.name,
+            memberCount: community.parent._count.members
+          });
         }
-        parentCommunity = parentCommunity.parent
+        
+        addParentCommunity(community.parent);
       }
+      
+      addParentCommunity(take.community as unknown as Community);
 
       // Calculate verifications
       const verifiedCommunities = communitiesToCheck.filter(community => {
