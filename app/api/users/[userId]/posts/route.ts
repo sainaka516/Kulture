@@ -14,7 +14,7 @@ export async function GET(
       return new NextResponse('Unauthorized', { status: 401 })
     }
 
-    const posts = await prisma.post.findMany({
+    const takes = await prisma.take.findMany({
       where: {
         authorId: params.userId,
       },
@@ -22,20 +22,46 @@ export async function GET(
         createdAt: 'desc',
       },
       include: {
-        author: true,
-        community: true,
+        author: {
+          select: {
+            id: true,
+            name: true,
+            username: true,
+            image: true,
+            verified: true,
+          },
+        },
+        community: {
+          include: {
+            _count: {
+              select: {
+                members: true,
+              },
+            },
+          },
+        },
+        votes: true,
         _count: {
           select: {
             comments: true,
-            votes: true,
           },
         },
       },
     })
 
-    return NextResponse.json(posts)
+    // Transform takes to include vote counts
+    const transformedTakes = takes.map(take => ({
+      ...take,
+      _count: {
+        ...take._count,
+        upvotes: take.votes.filter(vote => vote.type === 'UP').length,
+        downvotes: take.votes.filter(vote => vote.type === 'DOWN').length,
+      }
+    }))
+
+    return NextResponse.json(transformedTakes)
   } catch (error) {
-    console.error('[USER_POSTS]', error)
+    console.error('[USER_TAKES]', error)
     return new NextResponse('Internal Error', { status: 500 })
   }
 } 
