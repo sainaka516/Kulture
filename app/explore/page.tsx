@@ -200,6 +200,7 @@ async function getTakes() {
     // Combine and transform takes
     const allTakes = [...friendsTakes, ...otherTakes].map(take => ({
       ...take,
+      createdAt: take.createdAt.toISOString(),
       currentUserId: session.user.id,
       userVote: take.votes.find(vote => vote.userId === session.user.id)?.type || null,
       community: {
