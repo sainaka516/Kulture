@@ -25,7 +25,13 @@ const signupSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
   email: z.string().email("Invalid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
-})
+  confirmPassword: z.string()
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+
+type FormData = z.infer<typeof signupSchema> | z.infer<typeof loginSchema>;
 
 export default function UserAuthForm({
   isSignUp = false,
@@ -40,11 +46,12 @@ export default function UserAuthForm({
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm({
+    setError,
+  } = useForm<FormData>({
     resolver: zodResolver(isSignUp ? signupSchema : loginSchema),
   })
 
-  async function onSubmit(data: any) {
+  async function onSubmit(data: FormData) {
     setIsLoading(true)
 
     try {
@@ -57,8 +64,10 @@ export default function UserAuthForm({
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            ...data,
-            username: data.username.toLowerCase()
+            username: data.username.toLowerCase(),
+            email: (data as z.infer<typeof signupSchema>).email.toLowerCase(),
+            password: data.password,
+            confirmPassword: (data as z.infer<typeof signupSchema>).confirmPassword,
           }),
         })
 
@@ -66,6 +75,22 @@ export default function UserAuthForm({
         console.log('[AUTH] Signup response:', { status: response.status, ...result })
 
         if (!response.ok) {
+          if (response.status === 409) {
+            const errorMessage = result.error.toLowerCase()
+            if (errorMessage.includes('email')) {
+              setError('email', { 
+                type: 'manual',
+                message: 'This email is already registered'
+              })
+              throw new Error('This email is already registered')
+            } else if (errorMessage.includes('username')) {
+              setError('username', {
+                type: 'manual',
+                message: 'This username is already taken'
+              })
+              throw new Error('This username is already taken')
+            }
+          }
           throw new Error(result.error || 'Failed to create account')
         }
 
@@ -202,11 +227,30 @@ export default function UserAuthForm({
               </p>
             )}
           </div>
-          <Button disabled={isLoading || isGoogleLoading}>
+          {isSignUp && (
+            <div className="grid gap-1">
+              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Input
+                id="confirmPassword"
+                placeholder="Confirm your password"
+                type="password"
+                autoCapitalize="none"
+                autoComplete="new-password"
+                disabled={isLoading || isGoogleLoading}
+                {...register("confirmPassword")}
+              />
+              {errors?.confirmPassword && (
+                <p className="px-1 text-xs text-red-600">
+                  {errors.confirmPassword.message as string}
+                </p>
+              )}
+            </div>
+          )}
+          <Button type="submit" disabled={isLoading || isGoogleLoading}>
             {isLoading && (
               <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
             )}
-            {isSignUp ? "Create Account" : "Sign In"}
+            {isSignUp ? "Sign Up" : "Sign In"}
           </Button>
         </div>
       </form>
@@ -231,7 +275,7 @@ export default function UserAuthForm({
           <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
         ) : (
           <Icons.google className="mr-2 h-4 w-4" />
-        )}
+        )}{" "}
         Google
       </Button>
     </div>

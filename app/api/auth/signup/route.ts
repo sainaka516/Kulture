@@ -1,5 +1,3 @@
-'use client'
-
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
@@ -21,23 +19,35 @@ export async function POST(req: Request) {
       hasPassword: !!body.password 
     })
     
-    const { username, email, password } = signupSchema.parse(body)
+    // Remove confirmPassword before validation
+    const { confirmPassword, ...signupData } = body
+    const { username, email, password } = signupSchema.parse(signupData)
 
-    // Check if user already exists
-    const existingUser = await prisma.user.findFirst({
-      where: {
-        OR: [
-          { email },
-          { username }
-        ]
-      }
+    // Check if username is taken
+    const existingUsername = await prisma.user.findUnique({
+      where: { username }
     })
 
-    if (existingUser) {
-      console.log('[SIGNUP] User already exists:', { email, username })
+    if (existingUsername) {
+      console.log('[SIGNUP] Username already exists:', { username })
       return new NextResponse(
         JSON.stringify({
-          error: 'User with this email or username already exists'
+          error: 'Username already taken'
+        }),
+        { status: 409 }
+      )
+    }
+
+    // Check if email is taken
+    const existingEmail = await prisma.user.findUnique({
+      where: { email }
+    })
+
+    if (existingEmail) {
+      console.log('[SIGNUP] Email already exists:', { email })
+      return new NextResponse(
+        JSON.stringify({
+          error: 'Email already registered'
         }),
         { status: 409 }
       )

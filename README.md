@@ -8,18 +8,62 @@ Kulture is a modern social platform for sharing and verifying takes within commu
 - Join and participate in hierarchical communities
 - Connect with friends and follow their takes
 
+## Prerequisites
+
+Before you begin, ensure you have the following installed:
+
+- Node.js 18.0.0 or later
+- PostgreSQL 14.0 or later
+- npm or yarn package manager
+
+### Setting up PostgreSQL
+
+1. Install PostgreSQL:
+   - **Mac**: `brew install postgresql`
+   - **Windows**: Download from [PostgreSQL website](https://www.postgresql.org/download/windows/)
+   - **Linux**: `sudo apt-get install postgresql`
+
+2. Start PostgreSQL service:
+   - **Mac**: `brew services start postgresql`
+   - **Windows**: PostgreSQL service should start automatically
+   - **Linux**: `sudo service postgresql start`
+
+3. Create a database:
+```bash
+psql postgres
+CREATE DATABASE kulture;
+```
+
 ## Getting Started
 
-First, set up your environment variables:
+1. Clone the repository:
+```bash
+git clone https://github.com/yourusername/kulture.git
+cd kulture
+```
 
+2. Set up your environment variables:
 ```bash
 cp .env.example .env
 ```
 
-Then, install dependencies and run the development server:
+3. Update the `.env` file with your database connection string:
+```
+DATABASE_URL="postgresql://yourusername:yourpassword@localhost:5432/kulture"
+```
 
+4. Install dependencies:
 ```bash
 npm install
+```
+
+5. Run database migrations:
+```bash
+npx prisma migrate dev
+```
+
+6. Start the development server:
+```bash
 npm run dev
 ```
 
@@ -45,15 +89,22 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 - Radix UI primitives
 - React Spring for animations
 
-## Development
+## Common Setup Issues
 
-To work on Kulture locally:
+### Database Connection
 
-1. Clone the repository
-2. Install dependencies: `npm install`
-3. Set up your environment variables
-4. Run database migrations: `npx prisma migrate dev`
-5. Start the development server: `npm run dev`
+If you see database connection errors, check:
+1. PostgreSQL is running (`pg_isready` in terminal)
+2. Your database exists (`psql -l` to list databases)
+3. Your `.env` file has the correct DATABASE_URL
+4. Your PostgreSQL username and password are correct
+
+### Migration Issues
+
+If you encounter migration issues:
+1. Reset the database: `npx prisma migrate reset`
+2. Apply migrations again: `npx prisma migrate dev`
+3. Generate Prisma Client: `npx prisma generate`
 
 ## Contributing
 

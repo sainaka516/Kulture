@@ -42,22 +42,25 @@ export async function GET(request: Request) {
               include: {
                 parent: {
                   include: {
-                    parent: true,
+                    parent: true
+                  },
+                  select: {
+                    id: true,
+                    name: true,
                     _count: {
                       select: {
                         members: true
                       }
                     }
-                  },
+                  }
+                },
+                select: {
+                  id: true,
+                  name: true,
                   _count: {
                     select: {
                       members: true
                     }
-                  }
-                },
-                _count: {
-                  select: {
-                    members: true
                   }
                 }
               }
@@ -92,10 +95,7 @@ export async function GET(request: Request) {
       }
     }))
 
-    return NextResponse.json({
-      takes: transformedTakes,
-      nextCursor: takes.length === limit ? takes[takes.length - 1].id : undefined
-    })
+    return NextResponse.json(transformedTakes)
   } catch (error) {
     console.error('[TAKES_GET]', error)
     return new NextResponse('Internal Error', { status: 500 })
@@ -113,7 +113,7 @@ export async function POST(request: Request) {
     const json = await request.json()
     const { title, content, communityId } = json
 
-    if (!title || !communityId) {
+    if (!title || !content || !communityId) {
       return new NextResponse('Missing required fields', { status: 400 })
     }
 
@@ -135,32 +135,16 @@ export async function POST(request: Request) {
           },
         },
         community: {
-          select: {
-            id: true,
-            name: true,
-            slug: true,
+          include: {
             parent: {
-              select: {
-                id: true,
-                name: true,
-                slug: true,
+              include: {
                 parent: {
+                  include: {
+                    parent: true
+                  },
                   select: {
                     id: true,
                     name: true,
-                    slug: true,
-                    parent: {
-                      select: {
-                        id: true,
-                        name: true,
-                        slug: true,
-                        _count: {
-                          select: {
-                            members: true
-                          }
-                        }
-                      }
-                    },
                     _count: {
                       select: {
                         members: true
@@ -168,9 +152,13 @@ export async function POST(request: Request) {
                     }
                   }
                 },
-                _count: {
-                  select: {
-                    members: true
+                select: {
+                  id: true,
+                  name: true,
+                  _count: {
+                    select: {
+                      members: true
+                    }
                   }
                 }
               }
@@ -180,7 +168,7 @@ export async function POST(request: Request) {
                 members: true
               }
             }
-          },
+          }
         },
         votes: true,
         _count: {
