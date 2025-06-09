@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
-import { db } from '@/lib/db'
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import prisma from '@/lib/prisma'
+import { authOptions } from '@/lib/auth'
 
 export async function GET(
   req: Request,
@@ -14,7 +14,7 @@ export async function GET(
       return new NextResponse('Unauthorized', { status: 401 })
     }
 
-    const posts = await db.post.findMany({
+    const posts = await prisma.post.findMany({
       where: {
         authorId: params.userId,
       },

@@ -137,7 +137,7 @@ export async function POST(req: Request) {
     }
 
     // Create the community
-    const communityData = {
+    const communityData: any = {
       name,
       slug,
       title,
