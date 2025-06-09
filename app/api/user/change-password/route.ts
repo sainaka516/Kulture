@@ -14,13 +14,21 @@ export async function POST(req: Request) {
 
     const { currentPassword, newPassword } = await req.json();
 
+    if (!currentPassword || !newPassword) {
+      return new NextResponse('Missing password fields', { status: 400 });
+    }
+
     // Get user from database
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
+      select: {
+        id: true,
+        password: true
+      }
     });
 
-    if (!user) {
-      return new NextResponse('User not found', { status: 404 });
+    if (!user || !user.password) {
+      return new NextResponse('User not found or no password set', { status: 404 });
     }
 
     // Verify current password
@@ -34,7 +42,7 @@ export async function POST(req: Request) {
 
     // Update password in database
     await prisma.user.update({
-      where: { email: session.user.email },
+      where: { id: user.id },
       data: { password: hashedPassword },
     });
 
