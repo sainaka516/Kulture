@@ -22,7 +22,7 @@ export async function GET(
     }
 
     // Get user stats
-    const [takes, comments, communities] = await Promise.all([
+    const [takes, comments, communities, user] = await Promise.all([
       prisma.take.count({
         where: { authorId: userId }
       }),
@@ -40,6 +40,10 @@ export async function GET(
             }
           }
         }
+      }),
+      prisma.user.findUnique({
+        where: { id: userId },
+        select: { createdAt: true }
       })
     ])
 
@@ -47,7 +51,8 @@ export async function GET(
       totalTakes: takes,
       totalComments: comments,
       totalCommunities: communities.length,
-      joinedCommunities: communities.map(member => member.community)
+      joinedCommunities: communities.map(member => member.community),
+      createdAt: user?.createdAt
     })
   } catch (error) {
     console.error('Error fetching user stats:', error)

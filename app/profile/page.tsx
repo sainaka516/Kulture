@@ -15,6 +15,7 @@ interface UserStats {
   totalTakes: number
   totalComments: number
   totalCommunities: number
+  createdAt: string
   joinedCommunities: Array<{
     id: string
     name: string
@@ -86,10 +87,10 @@ export default function ProfilePage() {
               <Mail className="h-4 w-4" />
               <span>{session.user.email}</span>
             </div>
-            {session.user.createdAt && (
+            {userStats?.createdAt && (
               <div className="flex items-center gap-2 mt-2 text-muted-foreground">
                 <Calendar className="h-4 w-4" />
-                <span>Joined {format(new Date(session.user.createdAt), 'MMMM yyyy')}</span>
+                <span>Joined {format(new Date(userStats.createdAt), 'MMMM yyyy')}</span>
               </div>
             )}
           </div>
