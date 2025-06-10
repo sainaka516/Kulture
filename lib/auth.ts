@@ -51,31 +51,51 @@ interface GoogleProfile {
 async function authorize(credentials: Record<"username" | "password", string> | undefined) {
   try {
     if (!credentials?.username || !credentials?.password) {
+      console.log('[AUTH] Missing credentials:', { username: !!credentials?.username, password: !!credentials?.password })
       return null
     }
 
     const { username, password } = credentials
+    const isEmail = username.includes('@')
+    console.log('[AUTH] Attempting login with:', { username, isEmail })
 
     const user = await prisma.user.findUnique({
-      where: { username },
+      where: isEmail ? { email: username.toLowerCase() } : { username: username.toLowerCase() },
     })
 
-    if (!user || !user.password) {
+    if (!user) {
+      console.log('[AUTH] User not found:', { username, isEmail })
+      return null
+    }
+
+    if (!user.password) {
+      console.log('[AUTH] User has no password (OAuth-only account):', { username, isEmail })
       return null
     }
 
     const isValidPassword = await bcrypt.compare(password, user.password)
+    console.log('[AUTH] Password validation:', { username, isValid: isValidPassword })
 
     if (!isValidPassword) {
       return null
     }
 
-    return {
-      ...user,
+    const userToReturn = {
+      id: user.id,
+      name: user.name || user.username,
+      email: user.email || `${user.username}@example.com`,
+      image: user.image || undefined,
+      username: user.username,
       verified: true,
+      emailVerified: user.emailVerified,
+      password: user.password,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt
     }
+    console.log('[AUTH] Login successful:', { username, userId: user.id })
+    return userToReturn
   } catch (error) {
-    console.error('Error in authorize:', error)
+    console.error('[AUTH] Error in authorize:', error)
     return null
   }
 }

@@ -16,20 +16,48 @@ export async function POST(req: Request) {
     console.log('[SIGNUP] Received signup request:', { 
       username: body.username,
       email: body.email,
-      hasPassword: !!body.password 
+      hasPassword: !!body.password,
+      hasConfirmPassword: !!body.confirmPassword
     })
     
     // Remove confirmPassword before validation
     const { confirmPassword, ...signupData } = body
-    const { username, email, password } = signupSchema.parse(signupData)
+
+    // Validate password match
+    if (signupData.password !== confirmPassword) {
+      console.log('[SIGNUP] Password mismatch')
+      return new NextResponse(
+        JSON.stringify({
+          error: 'Passwords do not match'
+        }),
+        { status: 400 }
+      )
+    }
+
+    try {
+      const { username, email, password } = signupSchema.parse(signupData)
+      console.log('[SIGNUP] Validation passed:', { username, email })
+    } catch (validationError) {
+      console.log('[SIGNUP] Validation failed:', validationError)
+      if (validationError instanceof z.ZodError) {
+        return new NextResponse(
+          JSON.stringify({
+            error: 'Invalid input',
+            details: validationError.errors,
+          }),
+          { status: 400 }
+        )
+      }
+      throw validationError
+    }
 
     // Check if username is taken
     const existingUsername = await prisma.user.findUnique({
-      where: { username }
+      where: { username: signupData.username.toLowerCase() }
     })
 
     if (existingUsername) {
-      console.log('[SIGNUP] Username already exists:', { username })
+      console.log('[SIGNUP] Username already exists:', { username: signupData.username })
       return new NextResponse(
         JSON.stringify({
           error: 'Username already taken'
@@ -40,11 +68,11 @@ export async function POST(req: Request) {
 
     // Check if email is taken
     const existingEmail = await prisma.user.findUnique({
-      where: { email }
+      where: { email: signupData.email.toLowerCase() }
     })
 
     if (existingEmail) {
-      console.log('[SIGNUP] Email already exists:', { email })
+      console.log('[SIGNUP] Email already exists:', { email: signupData.email })
       return new NextResponse(
         JSON.stringify({
           error: 'Email already registered'
@@ -55,17 +83,19 @@ export async function POST(req: Request) {
 
     // Hash password
     const salt = await bcrypt.genSalt(10)
-    const hashedPassword = await bcrypt.hash(password, salt)
-    
-    console.log('[SIGNUP] Password hashed successfully')
+    const hashedPassword = await bcrypt.hash(signupData.password, salt)
+    console.log('[SIGNUP] Password hashed successfully:', { 
+      passwordLength: signupData.password.length,
+      hashLength: hashedPassword.length 
+    })
 
     // Create user with explicit data
     const userData = {
-      username: username.toLowerCase(), // Store username in lowercase
-      email: email.toLowerCase(), // Store email in lowercase
+      username: signupData.username.toLowerCase(),
+      email: signupData.email.toLowerCase(),
       password: hashedPassword,
-      verified: false, // Set verified to false by default
-      name: username, // Set initial name to username
+      verified: false,
+      name: signupData.username,
     }
 
     console.log('[SIGNUP] Creating user with data:', {
@@ -90,14 +120,6 @@ export async function POST(req: Request) {
       username: user.username,
       name: user.name,
       verified: user.verified
-    })
-
-    // Verify the password hash works
-    const verifyPassword = await bcrypt.compare(password, hashedPassword)
-    console.log('[SIGNUP] Password verification test:', { 
-      works: verifyPassword,
-      passwordLength: password.length,
-      hashLength: hashedPassword.length 
     })
 
     return NextResponse.json({
