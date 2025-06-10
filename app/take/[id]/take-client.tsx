@@ -3,7 +3,7 @@
 import { TakesProvider } from '@/lib/contexts/TakesContext'
 import TakeCard from '@/components/TakeCard'
 import Comments from '@/components/Comments'
-import { CommunityCard } from "@/components/CommunityCard"
+import { CommunityCard } from '@/components/CommunityCard'
 import { Take, Comment, Vote } from '@/lib/types'
 
 interface TakeClientProps {
