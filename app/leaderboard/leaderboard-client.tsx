@@ -129,7 +129,7 @@ export default function LeaderboardClient() {
                   user={{
                     image: user.image,
                     username: user.username || '',
-                    name: user.name || ''
+                    name: user.name || user.username || ''
                   }}
                   className="h-10 w-10"
                 />
@@ -193,7 +193,7 @@ export default function LeaderboardClient() {
                     user={{
                       image: take.author.image,
                       username: take.author.username || '',
-                      name: take.author.name || ''
+                      name: take.author.name || take.author.username || ''
                     }}
                     className="h-10 w-10"
                   />
