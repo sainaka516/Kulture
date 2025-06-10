@@ -5,30 +5,32 @@ import prisma from '@/lib/prisma'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
 import * as z from 'zod'
+import { Profile } from 'next-auth'
+import { User as PrismaUser } from '@prisma/client'
 
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
   password: z.string().min(1, "Password is required"),
 })
 
-declare module "next-auth" {
+declare module 'next-auth' {
+  interface Profile {
+    picture?: string
+    sub?: string
+  }
+
   interface Session {
     user: {
       id: string
-      name: string
-      email: string
+      name: string | null
+      email: string | null
       username: string
-      image?: string
+      image: string | null
       verified: boolean
     }
   }
 
-  interface User {
-    id: string
-    name: string
-    email: string
-    username: string
-    image?: string
+  interface User extends PrismaUser {
     verified: boolean
   }
 }
@@ -36,11 +38,50 @@ declare module "next-auth" {
 declare module "next-auth/jwt" {
   interface JWT {
     id: string
-    name: string
-    email: string
+    name: string | null
+    email: string | null
     username: string
-    picture?: string
+    picture: string | null
     verified: boolean
+  }
+}
+
+interface GoogleProfile {
+  sub: string
+  name: string | null
+  email: string | null
+  picture: string | null
+}
+
+async function authorize(credentials: Record<"username" | "password", string> | undefined) {
+  try {
+    if (!credentials?.username || !credentials?.password) {
+      return null
+    }
+
+    const { username, password } = credentials
+
+    const user = await prisma.user.findUnique({
+      where: { username },
+    })
+
+    if (!user || !user.password) {
+      return null
+    }
+
+    const isValidPassword = await bcrypt.compare(password, user.password)
+
+    if (!isValidPassword) {
+      return null
+    }
+
+    return {
+      ...user,
+      verified: true,
+    }
+  } catch (error) {
+    console.error('Error in authorize:', error)
+    return null
   }
 }
 
@@ -51,59 +92,66 @@ export const authOptions: NextAuthOptions = {
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   pages: {
-    signIn: '/login',
-    error: '/login',
+    signIn: '/sign-in',
+    signOut: '/sign-in',
+    error: '/sign-in',
   },
   debug: true,
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-      profile(profile) {
+      profile(profile, tokens) {
         return {
           id: profile.sub,
-          name: profile.name,
-          email: profile.email,
-          image: profile.picture,
-          username: profile.email.split("@")[0],
-          verified: true
+          name: profile.name || undefined,
+          email: profile.email || undefined,
+          image: profile.picture || undefined,
+          username: profile.email?.split('@')[0] || '',
+          verified: true,
+          password: null,
+          emailVerified: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
         }
-      }
+      },
     }),
     CredentialsProvider({
-      name: 'credentials',
+      name: 'Credentials',
       credentials: {
-        username: { label: 'Username', type: 'text' },
-        password: { label: 'Password', type: 'password' },
+        username: { label: "Username", type: "text" },
+        password: { label: "Password", type: "password" }
       },
       async authorize(credentials, req) {
-        if (!credentials?.username || !credentials?.password) {
-          throw new Error("Invalid credentials")
-        }
-
-        const user = await prisma.user.findUnique({
-          where: {
-            username: credentials.username
+        try {
+          if (!credentials?.username || !credentials?.password) {
+            return null
           }
-        })
 
-        if (!user || !user.password) {
-          throw new Error("Invalid credentials")
-        }
+          const user = await prisma.user.findUnique({
+            where: { username: credentials.username },
+          })
 
-        const isPasswordValid = await bcrypt.compare(credentials.password, user.password)
+          if (!user || !user.password) {
+            return null
+          }
 
-        if (!isPasswordValid) {
-          throw new Error("Invalid credentials")
-        }
+          const isValidPassword = await bcrypt.compare(credentials.password, user.password)
 
-        return {
-          id: user.id,
-          email: user.email || "",
-          name: user.name || "",
-          username: user.username,
-          image: user.image || undefined,
-          verified: user.verified
+          if (!isValidPassword) {
+            return null
+          }
+
+          return {
+            ...user,
+            name: user.name || undefined,
+            email: user.email || undefined,
+            image: user.image || undefined,
+            verified: true,
+          }
+        } catch (error) {
+          console.error('Error in authorize:', error)
+          return null
         }
       }
     }),
@@ -193,59 +241,27 @@ export const authOptions: NextAuthOptions = {
         return false
       }
     },
-    async jwt({ token, user, account, profile }) {
-      if (account?.type === "oauth" && profile) {
-        const dbUser = await prisma.user.findFirst({
-          where: {
-            OR: [
-              { email: profile.email },
-              { username: profile.email?.split("@")[0] }
-            ]
-          }
-        })
-
-        if (!dbUser) {
-          const newUser = await prisma.user.create({
-            data: {
-              email: profile.email,
-              name: profile.name,
-              username: profile.email?.split("@")[0] || "",
-              image: profile.picture,
-              verified: true
-            }
-          })
-          token.id = newUser.id
-          token.username = newUser.username
-          token.verified = newUser.verified
-        } else {
-          token.id = dbUser.id
-          token.username = dbUser.username
-          token.verified = dbUser.verified
-          if (dbUser.image !== profile.picture) {
-            await prisma.user.update({
-              where: { id: dbUser.id },
-              data: { image: profile.picture }
-            })
-          }
-        }
-      }
-
+    async jwt({ token, user, profile }) {
       if (user) {
         token.id = user.id
+        token.name = user.name || null
+        token.email = user.email || null
         token.username = user.username
+        token.picture = user.image || null
         token.verified = user.verified
       }
-
       return token
     },
     async session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.id
-        session.user.name = token.name
-        session.user.email = token.email
-        session.user.image = token.picture
-        session.user.username = token.username
-        session.user.verified = token.verified
+      if (token) {
+        session.user = {
+          id: token.id || '',
+          name: token.name || null,
+          email: token.email || null,
+          username: token.username || '',
+          image: token.picture || null,
+          verified: token.verified || false,
+        }
       }
       return session
     }

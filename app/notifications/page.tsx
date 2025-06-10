@@ -165,6 +165,7 @@ export default function NotificationsPage() {
                   user={{
                     image: notification.from.image,
                     username: notification.from.username,
+                    name: notification.from.username
                   }}
                   className="h-10 w-10"
                 />

@@ -7,7 +7,7 @@ async function main() {
     // Get all users without usernames who signed up with Google
     const users = await prisma.user.findMany({
       where: {
-        username: null,
+        username: undefined,
         accounts: {
           some: {
             provider: 'google'

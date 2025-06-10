@@ -22,7 +22,6 @@ export default function TabNavigator() {
           borderTopColor: theme.colors.outlineVariant,
           backgroundColor: theme.colors.surface,
         },
-        headerLargeTitle: true,
       }}
     >
       <Tab.Screen

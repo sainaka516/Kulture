@@ -54,7 +54,10 @@ export default async function KulturesPage() {
     if (memberDiff !== 0) return memberDiff
     // If member counts are equal, sort by name
     return a.name.localeCompare(b.name)
-  })
+  }).map(community => ({
+    ...community,
+    image: null,
+  }))
 
   return (
     <div className="container max-w-6xl py-6">

@@ -10,6 +10,7 @@ import UsernameEditor from '@/components/UsernameEditor'
 import { Session } from 'next-auth'
 import { Card } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
+import { TakesProvider } from '@/lib/contexts/TakesContext'
 
 interface UserProfileProps {
   user: any // Replace with proper type
@@ -80,7 +81,7 @@ export default function UserProfile({ user, session, showEmail }: UserProfilePro
                 <UsernameEditor
                   currentUsername={currentUser.username}
                   onUsernameUpdated={(newUsername) => {
-                    setCurrentUser(prev => ({ ...prev, username: newUsername }))
+                    setCurrentUser((prev: typeof user) => ({ ...prev, username: newUsername }))
                   }}
                 />
               ) : (
@@ -148,12 +149,13 @@ export default function UserProfile({ user, session, showEmail }: UserProfilePro
       {/* Takes Feed */}
       <Card className="p-6">
         <h2 className="text-lg font-semibold mb-4">Takes</h2>
-        <TakeFeed 
-          takes={currentUser.takes}
-          communitySlug={null}
-          defaultView="list"
-          showViewSwitcher={true}
-        />
+        <TakesProvider initialTakes={currentUser.takes}>
+          <TakeFeed 
+            communitySlug={null}
+            defaultView="list"
+            showViewSwitcher={true}
+          />
+        </TakesProvider>
       </Card>
     </div>
   )

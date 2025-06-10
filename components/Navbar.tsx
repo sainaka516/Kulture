@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils'
 
 export default function Navbar() {
   const pathname = usePathname()
-  const { status, session } = useSession()
+  const { status, data: session } = useSession()
 
   return (
     <div className="fixed top-0 inset-x-0 h-fit bg-background border-b border-border z-[10] py-2">
@@ -89,7 +89,11 @@ export default function Navbar() {
             <DropdownMenu>
               <DropdownMenuTrigger>
                 <UserAvatar
-                  user={{ name: session.user.name || null, image: session.user.image || null }}
+                  user={{ 
+                    name: session.user.name || null, 
+                    image: session.user.image || null,
+                    username: session.user.email?.split('@')[0] || 'user'
+                  }}
                   className="h-8 w-8"
                 />
               </DropdownMenuTrigger>

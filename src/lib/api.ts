@@ -116,6 +116,19 @@ export const api = {
     }
   },
 
+  signIn: async (email: string, password: string): Promise<void> => {
+    await fetchApi('/auth/signin', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+  },
+
+  signOut: async (): Promise<void> => {
+    await fetchApi('/auth/signout', {
+      method: 'POST',
+    });
+  },
+
   updateProfile: async (profile: { name?: string; bio?: string }): Promise<User> => {
     const data = await fetchApi('/users/profile', {
       method: 'PATCH',

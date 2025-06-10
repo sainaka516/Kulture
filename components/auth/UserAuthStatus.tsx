@@ -51,7 +51,9 @@ export default function UserAuthStatus() {
           <DropdownMenuSeparator />
           <DropdownMenuItem 
             className="cursor-pointer text-red-600 focus:text-red-600"
-            onClick={() => signOut()}
+            onClick={() => signOut({
+              callbackUrl: `${window.location.origin}/sign-in`
+            })}
           >
             Sign out
           </DropdownMenuItem>
@@ -61,7 +63,7 @@ export default function UserAuthStatus() {
   }
 
   return (
-    <Link href="/login">
+    <Link href="/sign-in">
       <Avatar className="cursor-pointer hover:opacity-80">
         <AvatarFallback className="bg-gray-100">
           <User className="h-5 w-5 text-gray-400" />

@@ -1,11 +1,21 @@
 import { PrismaClient } from '@prisma/client'
 
+interface Post {
+  id: string
+  title: string
+  content: string
+  createdAt: Date
+  updatedAt: Date
+  authorId: string
+  communityId: string
+}
+
 const prisma = new PrismaClient()
 
 async function migratePosts() {
   try {
     // Get all posts
-    const posts = await prisma.$queryRaw`
+    const posts = await prisma.$queryRaw<Post[]>`
       SELECT * FROM "Post"
     `
 

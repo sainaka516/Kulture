@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { signIn } from "next-auth/react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -44,6 +44,8 @@ export default function UserAuthForm({
   ...props
 }: UserAuthFormProps) {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const callbackUrl = searchParams.get('callbackUrl') || '/explore'
   const [isLoading, setIsLoading] = React.useState<boolean>(false)
   const [isGoogleLoading, setIsGoogleLoading] = React.useState<boolean>(false)
 
@@ -120,7 +122,7 @@ export default function UserAuthForm({
         // Wait a moment for the session to be established
         await new Promise(resolve => setTimeout(resolve, 2000))
         
-        router.push("/explore")
+        router.push(callbackUrl)
       } else {
         // Handle login
         console.log('[AUTH] Starting login process:', { 
@@ -149,7 +151,7 @@ export default function UserAuthForm({
         // Wait a moment for the session to be established
         await new Promise(resolve => setTimeout(resolve, 2000))
         
-        router.push("/explore")
+        router.push(callbackUrl)
       }
     } catch (error) {
       console.error('[AUTH] Authentication error:', error)
@@ -162,7 +164,7 @@ export default function UserAuthForm({
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true)
     try {
-      await signIn("google", { callbackUrl: "/explore" })
+      await signIn("google", { callbackUrl })
     } catch (error) {
       console.error('[AUTH] Google sign in error:', error)
       toast.error("Something went wrong with Google sign in")

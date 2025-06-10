@@ -22,12 +22,18 @@ import { Take, Vote } from '@prisma/client'
 import { Community } from '@prisma/client'
 import { User } from '@prisma/client'
 import { format } from "date-fns"
+import { useSession } from 'next-auth/react'
+import { useToast } from '@/hooks/use-toast'
+import { useTakes } from '@/lib/contexts/TakesContext'
+import { useState, useEffect } from 'react'
 
 interface SimpleCommunity {
   id: string;
   name: string;
   slug: string;
   _count?: {
+    takes: number;
+    children: number;
     members: number;
   };
   parent?: {
@@ -39,10 +45,14 @@ interface SimpleCommunity {
       name: string;
       slug: string;
       _count?: {
+        takes: number;
+        children: number;
         members: number;
       };
     } | null;
     _count?: {
+      takes: number;
+      children: number;
       members: number;
     };
   } | null;
@@ -69,7 +79,17 @@ export type ExtendedTake = {
         id: string
         name: string
         slug: string
+        _count?: {
+          takes: number
+          children: number
+          members: number
+        }
       } | null
+      _count?: {
+        takes: number
+        children: number
+        members: number
+      }
     } | null
     _count: {
       takes: number
@@ -104,171 +124,127 @@ interface TakeCardProps {
   onViewed?: () => void;
 }
 
-export default function TakeCard({ take, currentKultureSlug, onVote }: TakeCardProps) {
+export default function TakeCard({ take: initialTake, currentKultureSlug, onVote: propOnVote }: TakeCardProps) {
+  const { data: session } = useSession()
+  const { toast } = useToast()
+  const { updateTake } = useTakes()
+  const [take, setTake] = useState(initialTake)
   const isAuthor = take.author.id === take.authorId
 
-  // Calculate vote score with null check
-  const voteScore = (take.votes || []).reduce((acc, vote) => {
-    if (vote.type === 'UP') return acc + 1
-    if (vote.type === 'DOWN') return acc - 1
-    return acc
-  }, 0)
+  // Update local state when initialTake changes
+  useEffect(() => {
+    setTake(initialTake)
+  }, [initialTake])
 
-  // Check verification status for current community
-  const currentMemberCount = take.community._count?.members || 0
-  const requiredCurrentVotes = Math.ceil(currentMemberCount * 0.5)
-  const isVerifiedInCurrent = currentMemberCount > 0 && voteScore >= requiredCurrentVotes
-
-  console.log('Take details:', {
-    takeId: take.id,
-    title: take.title,
-    community: {
-      name: take.community.name,
-      parent: take.community.parent?.name,
-      memberCount: take.community._count?.members
-    },
-    voteScore,
-    verificationDetails: {
-      currentMemberCount,
-      requiredCurrentVotes,
-      isVerifiedInCurrent,
-      community: take.community.name,
-      parentCommunity: take.community.parent?.name
+  // Handle voting
+  const handleVote = async (type: 'UP' | 'DOWN') => {
+    if (!session) {
+      toast({
+        title: 'Sign in required',
+        description: 'You must be signed in to vote.',
+        variant: 'destructive',
+      })
+      return
     }
-  })
 
-  // Get verification status for all ancestors (parent chain)
-  const getVerifiedAncestors = (community: SimpleCommunity): { name: string; isVerified: boolean }[] => {
-    const ancestors = []
-    let currentParent = community.parent
+    try {
+      // If onVote prop is provided, use it
+      if (propOnVote) {
+        await propOnVote(take.id, type)
+        return
+      }
 
-    while (currentParent) {
-      const memberCount = currentParent._count?.members || 0
-      const requiredVotes = Math.ceil(memberCount * 0.5)
-      const isVerified = memberCount > 0 && voteScore >= requiredVotes
-
-      ancestors.push({
-        name: currentParent.name,
-        isVerified
+      // Otherwise, handle vote directly
+      const response = await fetch(`/api/takes/${take.id}/vote`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type }),
       })
 
-      // Move up to the next parent in the chain
-      currentParent = currentParent.parent
-    }
-
-    // Debug log for ancestor verification
-    console.log('Ancestor verification:', {
-      takeId: take.id,
-      title: take.title,
-      ancestors: ancestors.map(a => ({
-        name: a.name,
-        isVerified: a.isVerified,
-      }))
-    })
-
-    return ancestors
-  }
-
-  // Get verification status for all descendants (if we're in a parent Kulture)
-  const getVerifiedDescendants = (community: SimpleCommunity): { name: string; isVerified: boolean }[] => {
-    // Only check descendants if we're viewing from a parent Kulture
-    // and the take belongs to one of its descendants
-    if (!currentKultureSlug || !take.community.parent) {
-      return []
-    }
-
-    // Check if we're viewing from a parent Kulture
-    const isViewingFromParent = currentKultureSlug === take.community.parent.slug
-
-    if (!isViewingFromParent) {
-      return []
-    }
-
-    const verifiedInThisLevel = (community.children || []).map(child => {
-      // Only check verification for the child community that contains this take
-      if (child.id === take.community.id) {
-        const memberCount = child._count?.members || 0
-        const requiredVotes = Math.ceil(memberCount * 0.5)
-        const isVerified = memberCount > 0 && voteScore >= requiredVotes
-        
-        return [{ name: child.name, isVerified }]
+      if (!response.ok) {
+        throw new Error('Failed to vote')
       }
-      return []
-    }).flat()
 
-    return verifiedInThisLevel
+      const updatedTake = await response.json()
+
+      // Update both local state and context
+      const newTakeState = {
+        ...take,
+        ...updatedTake,
+        votes: updatedTake.votes,
+        userVote: updatedTake.userVote,
+        _count: {
+          ...take._count,
+          ...updatedTake._count,
+          upvotes: updatedTake.votes.filter((v: Vote) => v.type === 'UP').length,
+          downvotes: updatedTake.votes.filter((v: Vote) => v.type === 'DOWN').length,
+        },
+      }
+      setTake(newTakeState)
+      updateTake(newTakeState)
+
+      // Only show success message if the vote was added or changed
+      const existingVote = take.votes.find(v => v.userId === session.user.id)?.type
+      const isRemovingVote = existingVote === type
+      if (!isRemovingVote) {
+        toast({
+          title: 'Success',
+          description: `You ${type === 'UP' ? 'agreed with' : 'disagreed with'} this take`,
+        })
+      }
+    } catch (error) {
+      console.error('Error voting:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to vote. Please try again.',
+        variant: 'destructive',
+      })
+    }
   }
 
-  const verifiedDescendants = getVerifiedDescendants(take.community)
-  const verifiedAncestors = getVerifiedAncestors(take.community)
+  // Calculate upvote count for verification
+  const upvoteCount = take._count.upvotes
 
-  // Calculate total number of Kultures where the take is verified
-  const verifiedCount = [
-    isVerifiedInCurrent,
-    ...verifiedAncestors.map(ancestor => ancestor.isVerified),
-    ...verifiedDescendants.map(desc => desc.isVerified)
-  ].filter(Boolean).length
+  // Calculate member counts for verification
+  const currentMemberCount = take.community._count?.members || 0
+  const parentMemberCount = take.community.parent?._count?.members || 0
+  const grandparentMemberCount = take.community.parent?.parent?._count?.members || 0
 
-  // Get tooltip text based on verification status
+  // Calculate verification status for each level
+  const isVerifiedInCurrent = currentMemberCount > 0 && upvoteCount >= Math.ceil(currentMemberCount * 0.5)
+  const isVerifiedInParent = parentMemberCount > 0 && upvoteCount >= Math.ceil(parentMemberCount * 0.5)
+  const isVerifiedInGrandparent = grandparentMemberCount > 0 && upvoteCount >= Math.ceil(grandparentMemberCount * 0.5)
+
+  // Calculate total verification count
+  const verifiedCount = [isVerifiedInCurrent, isVerifiedInParent, isVerifiedInGrandparent].filter(Boolean).length
+
+  // Get tooltip text
   const getTooltipText = () => {
     const verifiedKultures = []
     if (isVerifiedInCurrent) {
       verifiedKultures.push(take.community.name)
     }
-    // Add all verified ancestors
-    verifiedAncestors.forEach(ancestor => {
-      if (ancestor.isVerified) {
-        verifiedKultures.push(ancestor.name)
-      }
-    })
-    // Add all verified descendants
-    verifiedDescendants.forEach(desc => {
-      if (desc.isVerified) {
-        verifiedKultures.push(desc.name)
-      }
-    })
+    if (isVerifiedInParent && take.community.parent) {
+      verifiedKultures.push(take.community.parent.name)
+    }
+    if (isVerifiedInGrandparent && take.community.parent?.parent) {
+      verifiedKultures.push(take.community.parent.parent.name)
+    }
 
     if (verifiedKultures.length === 0) {
       return ''
     }
 
     if (verifiedKultures.length === 1) {
-      return `This take is verified in ${verifiedKultures[0]} (${voteScore} votes)`
+      return `This take is verified in ${verifiedKultures[0]} (${upvoteCount} votes)`
     }
 
     const lastKulture = verifiedKultures.pop()
-    return `This take is verified in ${verifiedKultures.join(', ')} and ${lastKulture} (${voteScore} votes)`
+    return `This take is verified in ${verifiedKultures.join(', ')} and ${lastKulture} (${upvoteCount} votes)`
   }
 
-  // Debug logging
-  console.log('Take verification details:', {
-    takeId: take.id,
-    communityName: take.community.name,
-    voteScore,
-    currentMemberCount,
-    requiredCurrentVotes,
-    isVerifiedInCurrent,
-    parentChain: {
-      parent: take.community.parent ? {
-        name: take.community.parent.name,
-        memberCount: take.community.parent._count?.members,
-        requiredVotes: take.community.parent._count?.members ? Math.ceil(take.community.parent._count.members * 0.5) : null,
-        isVerified: take.community.parent._count?.members ? voteScore >= Math.ceil(take.community.parent._count.members * 0.5) : false
-      } : null,
-      grandparent: take.community.parent?.parent ? {
-        name: take.community.parent.parent.name,
-        memberCount: take.community.parent.parent._count?.members,
-        requiredVotes: take.community.parent.parent._count?.members ? Math.ceil(take.community.parent.parent._count.members * 0.5) : null,
-        isVerified: take.community.parent.parent._count?.members ? voteScore >= Math.ceil(take.community.parent.parent._count.members * 0.5) : false
-      } : null
-    },
-    verifiedDescendants: verifiedDescendants.map(desc => ({ name: desc.name, isVerified: desc.isVerified })),
-    verifiedCount,
-    verificationBadgeText: verifiedCount > 0 ? `${verifiedCount}x` : "",
-    votes: take.votes.map(v => ({ type: v.type, userId: v.userId })),
-    upvotes: take.votes.filter(v => v.type === 'UP').length,
-    downvotes: take.votes.filter(v => v.type === 'DOWN').length
-  })
+  // Set verification badge text to show total number of verified Kultures
+  const verificationBadgeText = verifiedCount > 0 ? `${verifiedCount}x` : ""
 
   // Determine if we're viewing from parent or sibling context
   const isParentView = currentKultureSlug === take.community.parent?.slug
@@ -277,11 +253,6 @@ export default function TakeCard({ take, currentKultureSlug, onVote }: TakeCardP
 
   // Determine checkmark color - always blue for verification
   const checkmarkColor = verifiedCount > 0 ? "text-blue-500" : null
-
-  // Set verification badge text to show total number of verified Kultures
-  const verificationBadgeText = verifiedCount > 0 ? `${verifiedCount}x` : ""
-
-  const userVoteType = take.userVote || null // Ensure userVote is never undefined
 
   return (
     <Card className="relative overflow-hidden">
@@ -296,7 +267,9 @@ export default function TakeCard({ take, currentKultureSlug, onVote }: TakeCardP
                 "flex items-center gap-2 px-6 transition-colors",
                 take.userVote === 'UP' && "bg-purple-500 hover:bg-purple-600 text-white"
               )}
-              onClick={() => onVote?.(take.id, 'UP')}
+              onClick={() => handleVote('UP')}
+              data-voting-button="up"
+              data-take-id={take.id}
             >
               <ThumbsUp className="h-6 w-6" />
               <span className="font-medium">{take._count.upvotes}</span>
@@ -308,7 +281,9 @@ export default function TakeCard({ take, currentKultureSlug, onVote }: TakeCardP
                 "flex items-center gap-2 px-6 transition-colors",
                 take.userVote === 'DOWN' && "bg-red-500 hover:bg-red-600 text-white"
               )}
-              onClick={() => onVote?.(take.id, 'DOWN')}
+              onClick={() => handleVote('DOWN')}
+              data-voting-button="down"
+              data-take-id={take.id}
             >
               <ThumbsDown className="h-6 w-6" />
               <span className="font-medium">{take._count.downvotes}</span>
@@ -373,7 +348,7 @@ export default function TakeCard({ take, currentKultureSlug, onVote }: TakeCardP
 
           {/* Content */}
           <div className="mt-4">
-            <Link href={`/take/${take.id}`}>
+            <Link href={`/take/${take.id}`} prefetch={false}>
               <div className="flex items-center gap-2">
                 <h2 className="text-xl font-semibold mb-2 hover:underline">
                   {take.title}
@@ -409,6 +384,7 @@ export default function TakeCard({ take, currentKultureSlug, onVote }: TakeCardP
             <div className="flex items-center space-x-4 text-muted-foreground">
               <Link
                 href={`/take/${take.id}`}
+                prefetch={false}
                 className="flex items-center space-x-2 hover:text-foreground transition-colors"
               >
                 <MessageSquare className="h-4 w-4" />

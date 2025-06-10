@@ -27,7 +27,7 @@ export default function SettingsPage() {
   };
 
   const handleLogout = async () => {
-    await signOut({ callbackUrl: '/login' });
+    await signOut({ callbackUrl: '/sign-in' });
   };
 
   const handlePasswordChange = async (e: React.FormEvent) => {

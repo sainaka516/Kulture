@@ -10,6 +10,7 @@ interface KultureWithCounts extends Community {
     name: string | null
     image: string | null
   }
+  image: string | null
   parent?: {
     name: string
     slug: string

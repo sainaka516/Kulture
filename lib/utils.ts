@@ -30,20 +30,30 @@ export function transformTake(take: any, currentUserId?: string | null) {
       id: take.community.id,
       name: take.community.name,
       slug: take.community.slug,
-      _count: {
-        takes: take.community._count?.takes || 0,
-        children: take.community._count?.children || 0,
-        members: take.community._count?.members || 0,
+      _count: take.community._count || {
+        takes: 0,
+        children: 0,
+        members: 0,
       },
       parent: take.community.parent ? {
         id: take.community.parent.id,
         name: take.community.parent.name,
         slug: take.community.parent.slug,
-        _count: {
-          takes: take.community.parent._count?.takes || 0,
-          children: take.community.parent._count?.children || 0,
-          members: take.community.parent._count?.members || 0,
+        _count: take.community.parent._count || {
+          takes: 0,
+          children: 0,
+          members: 0,
         },
+        parent: take.community.parent.parent ? {
+          id: take.community.parent.parent.id,
+          name: take.community.parent.parent.name,
+          slug: take.community.parent.parent.slug,
+          _count: take.community.parent.parent._count || {
+            takes: 0,
+            children: 0,
+            members: 0,
+          },
+        } : null,
       } : null,
     },
   }

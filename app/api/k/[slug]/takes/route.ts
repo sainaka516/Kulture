@@ -89,10 +89,31 @@ export async function GET(
         },
         community: {
           include: {
+            _count: {
+              select: {
+                members: true,
+                takes: true,
+                children: true
+              }
+            },
             parent: {
               include: {
+                _count: {
+                  select: {
+                    members: true,
+                    takes: true,
+                    children: true
+                  }
+                },
                 parent: {
                   include: {
+                    _count: {
+                      select: {
+                        members: true,
+                        takes: true,
+                        children: true
+                      }
+                    },
                     parent: true
                   }
                 }

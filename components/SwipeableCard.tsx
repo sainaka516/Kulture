@@ -21,6 +21,7 @@ interface SwipeableCardProps {
   onNext: () => void
   onPrevious: () => void
   hasPrevious: boolean
+  isLastTake: boolean
 }
 
 export default function SwipeableCard({
@@ -30,6 +31,7 @@ export default function SwipeableCard({
   onNext,
   onPrevious,
   hasPrevious,
+  isLastTake,
 }: SwipeableCardProps) {
   const { data: session } = useSession()
   const [isDragging, setIsDragging] = useState(false)
@@ -43,44 +45,26 @@ export default function SwipeableCard({
   // Get user's current vote
   const userVote = take.votes?.find(vote => vote.userId === session?.user?.id)?.type || null
 
-  // Calculate vote score
-  const voteScore = (take.votes || []).reduce((acc, vote) => {
-    if (vote.type === 'UP') return acc + 1
-    if (vote.type === 'DOWN') return acc - 1
-    return acc
-  }, 0)
+  // Calculate upvote count for verification
+  const upvoteCount = (take.votes || []).filter(vote => vote.type === 'UP').length
 
-  // Calculate verification status
+  // Check verification status for current community
   const currentMemberCount = take.community._count?.members || 0
   const requiredCurrentVotes = Math.ceil(currentMemberCount * 0.5)
-  const isVerifiedInCurrent = currentMemberCount > 0 && voteScore >= requiredCurrentVotes
+  const isVerifiedInCurrent = currentMemberCount > 0 && upvoteCount >= requiredCurrentVotes
 
-  // Get verification status for all ancestors
-  const getVerifiedAncestors = () => {
-    const ancestors = []
-    let currentParent = take.community.parent
+  // Check verification status for parent community
+  const parentMemberCount = take.community.parent?._count?.members || 0
+  const requiredParentVotes = Math.ceil(parentMemberCount * 0.5)
+  const isVerifiedInParent = parentMemberCount > 0 && upvoteCount >= requiredParentVotes
 
-    while (currentParent) {
-      const memberCount = currentParent._count?.members || 0
-      const requiredVotes = Math.ceil(memberCount * 0.5)
-      const isVerified = memberCount > 0 && voteScore >= requiredVotes
+  // Check verification status for grandparent community
+  const grandparentMemberCount = take.community.parent?.parent?._count?.members || 0
+  const requiredGrandparentVotes = Math.ceil(grandparentMemberCount * 0.5)
+  const isVerifiedInGrandparent = grandparentMemberCount > 0 && upvoteCount >= requiredGrandparentVotes
 
-      ancestors.push({
-        name: currentParent.name,
-        isVerified
-      })
-
-      currentParent = currentParent.parent
-    }
-
-    return ancestors
-  }
-
-  const verifiedAncestors = getVerifiedAncestors()
-  const verifiedCount = [
-    isVerifiedInCurrent,
-    ...verifiedAncestors.map(ancestor => ancestor.isVerified)
-  ].filter(Boolean).length
+  // Calculate total verification count
+  const verifiedCount = [isVerifiedInCurrent, isVerifiedInParent, isVerifiedInGrandparent].filter(Boolean).length
 
   // Get tooltip text
   const getTooltipText = () => {
@@ -88,20 +72,23 @@ export default function SwipeableCard({
     if (isVerifiedInCurrent) {
       verifiedKultures.push(take.community.name)
     }
-    verifiedAncestors.forEach(ancestor => {
-      verifiedKultures.push(ancestor.name)
-    })
+    if (isVerifiedInParent && take.community.parent) {
+      verifiedKultures.push(take.community.parent.name)
+    }
+    if (isVerifiedInGrandparent && take.community.parent?.parent) {
+      verifiedKultures.push(take.community.parent.parent.name)
+    }
 
     if (verifiedKultures.length === 0) {
       return ''
     }
 
     if (verifiedKultures.length === 1) {
-      return `This take is verified in ${verifiedKultures[0]} (${voteScore} votes)`
+      return `This take is verified in ${verifiedKultures[0]} (${upvoteCount} votes)`
     }
 
     const lastKulture = verifiedKultures.pop()
-    return `This take is verified in ${verifiedKultures.join(', ')} and ${lastKulture} (${voteScore} votes)`
+    return `This take is verified in ${verifiedKultures.join(', ')} and ${lastKulture} (${upvoteCount} votes)`
   }
 
   // Configure spring animation
@@ -114,13 +101,17 @@ export default function SwipeableCard({
 
   // Bind drag gesture
   const bindDrag = useDrag(
-    ({ active, movement: [mx], velocity: [vx], target }) => {
+    ({ active, movement: [mx], velocity: [vx], target, event }) => {
       // Don't handle drag events if window width is not set yet
       if (windowWidth === 0) return
 
-      // Ignore drag if the target is a button or inside the voting buttons container
-      const isVotingButton = (target as HTMLElement)?.closest('.voting-buttons')
-      if (isVotingButton) {
+      // Check if the interaction is with a voting button or link
+      const targetElement = event?.target as HTMLElement
+      const isVotingInteraction = targetElement?.closest('[data-voting-button]') || targetElement?.closest('[data-voting-buttons]')
+      const isLinkInteraction = targetElement?.closest('a') && !targetElement?.closest('[data-community-link]')
+      
+      // If it's a voting or link interaction, don't handle any drag behavior
+      if (isVotingInteraction || isLinkInteraction) {
         return
       }
 
@@ -168,6 +159,9 @@ export default function SwipeableCard({
           // No previous take, bounce back
           api.start({ x: 0, rotate: 0, scale: 1 })
         }
+      } else if (!active) {
+        // If not triggering navigation, reset position
+        api.start({ x: 0, rotate: 0, scale: 1 })
       }
     },
     {
@@ -228,6 +222,7 @@ export default function SwipeableCard({
                   <Link
                     href={`/k/${take.community.slug}`}
                     className="hover:underline"
+                    data-community-link
                   >
                     {take.community.parent ? (
                       <>
@@ -244,7 +239,7 @@ export default function SwipeableCard({
             </div>
 
             {/* Take content */}
-            <div className="space-y-3">
+            <Link href={`/take/${take.id}`} className="block space-y-3 hover:opacity-75 transition-opacity">
               <div className="flex items-center gap-2">
                 <h2 className="text-2xl font-bold">{take.title}</h2>
                 {verifiedCount > 0 && (
@@ -266,10 +261,13 @@ export default function SwipeableCard({
               {take.content && (
                 <p className="text-muted-foreground text-lg">{take.content}</p>
               )}
-            </div>
+            </Link>
 
             {/* Voting buttons */}
-            <div className="voting-buttons flex items-center justify-center gap-8">
+            <div 
+              className="voting-buttons flex items-center justify-center gap-8" 
+              data-voting-buttons
+            >
               <Button
                 variant={userVote === 'UP' ? 'default' : 'outline'}
                 size="lg"
@@ -277,10 +275,14 @@ export default function SwipeableCard({
                   "flex items-center gap-2 px-6 transition-colors",
                   userVote === 'UP' && "bg-purple-500 hover:bg-purple-600 text-white"
                 )}
-                onClick={() => onVote('UP')}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onVote('UP')
+                }}
+                data-voting-button
               >
                 <ThumbsUp className="h-6 w-6" />
-                <span className="font-medium">{take.votes.filter(v => v.type === 'UP').length}</span>
+                <span className="font-medium">{take._count.upvotes}</span>
               </Button>
               <Button
                 variant={userVote === 'DOWN' ? 'default' : 'outline'}
@@ -289,10 +291,14 @@ export default function SwipeableCard({
                   "flex items-center gap-2 px-6 transition-colors",
                   userVote === 'DOWN' && "bg-red-500 hover:bg-red-600 text-white"
                 )}
-                onClick={() => onVote('DOWN')}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onVote('DOWN')
+                }}
+                data-voting-button
               >
                 <ThumbsDown className="h-6 w-6" />
-                <span className="font-medium">{take.votes.filter(v => v.type === 'DOWN').length}</span>
+                <span className="font-medium">{take._count.downvotes}</span>
               </Button>
             </div>
 
@@ -301,6 +307,11 @@ export default function SwipeableCard({
               <Link
                 href={`/take/${take.id}`}
                 className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  e.preventDefault()
+                  window.location.href = `/take/${take.id}`
+                }}
               >
                 <MessageSquare className="h-5 w-5" />
                 <span>{take._count.comments} comments</span>

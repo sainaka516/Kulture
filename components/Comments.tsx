@@ -121,8 +121,11 @@ export default function Comments({ takeId, initialComments }: CommentsProps) {
           <div key={comment.id} className="space-y-2">
             <div className="flex items-center space-x-2">
               <UserAvatar
-                name={comment.author.name || null}
-                image={comment.author.image || null}
+                user={{
+                  name: comment.author.name || null,
+                  image: comment.author.image || null,
+                  username: comment.author.name || 'user'
+                }}
                 className="h-6 w-6"
               />
               <div className="flex items-center space-x-2 text-sm">

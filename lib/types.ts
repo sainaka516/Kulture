@@ -41,11 +41,53 @@ export interface Community {
   }
 }
 
+export interface Vote {
+  type: 'UP' | 'DOWN'
+  id: string
+  userId: string
+  takeId: string
+  createdAt: Date
+  updatedAt: Date
+}
+
 export interface Take {
   id: string
   title: string
   content: string | null
-  createdAt: string
+  createdAt: string | Date
+  updatedAt: string | Date
+  communityId: string
+  authorId: string
+  community: {
+    id: string
+    name: string
+    slug: string
+    parent?: {
+      id: string
+      name: string
+      slug: string
+      parent?: {
+        id: string
+        name: string
+        slug: string
+        _count?: {
+          takes: number
+          children: number
+          members: number
+        }
+      } | null
+      _count?: {
+        takes: number
+        children: number
+        members: number
+      }
+    } | null
+    _count: {
+      takes: number
+      children: number
+      members: number
+    }
+  }
   author: {
     id: string
     name: string | null
@@ -53,18 +95,17 @@ export interface Take {
     image: string | null
     verified: boolean
   }
-  community: Community
-  votes: Array<{
-    type: 'UP' | 'DOWN'
-    userId: string
-  }>
+  votes: (Vote & {
+    createdAt: string | Date
+    updatedAt: string | Date
+  })[]
   _count: {
-    comments: number
     upvotes: number
     downvotes: number
+    comments: number
   }
-  currentUserId?: string
   userVote?: 'UP' | 'DOWN' | null
+  verifiedCount?: number
 }
 
 export interface Comment {

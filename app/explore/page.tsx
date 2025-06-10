@@ -202,7 +202,9 @@ async function getTakes() {
     // Combine and transform takes
     const allTakes = [...friendsTakes, ...otherTakes].map(take => ({
       ...take,
-      createdAt: take.createdAt.toISOString(),
+      updatedAt: take.updatedAt || take.createdAt,
+      communityId: take.communityId || take.community.id,
+      authorId: take.authorId || take.author.id,
       currentUserId: session.user.id,
       userVote: (take.votes.find(vote => vote.userId === session.user.id)?.type || null) as "UP" | "DOWN" | null,
       votes: take.votes.map(vote => ({
@@ -216,36 +218,57 @@ async function getTakes() {
       },
       community: {
         ...take.community,
-        _count: {
-          ...take.community._count,
-          members: take.community._count?.members || 0
+        _count: take.community._count || {
+          takes: 0,
+          children: 0,
+          members: 0,
         },
         parent: take.community.parent ? {
           ...take.community.parent,
-          parent: take.community.parent.parent ? {
-            ...take.community.parent.parent,
-            parent: take.community.parent.parent.parent ? {
-              ...take.community.parent.parent.parent,
-              _count: {
-                ...take.community.parent.parent.parent._count,
-                members: take.community.parent.parent.parent._count?.members || 0
-              }
-            } : null,
-            _count: {
-              ...take.community.parent.parent._count,
-              members: take.community.parent.parent._count?.members || 0
-            }
-          } : null,
-          _count: {
-            ...take.community.parent._count,
-            members: take.community.parent._count?.members || 0
-          }
-        } : null
+          _count: take.community.parent._count || {
+            takes: 0,
+            children: 0,
+            members: 0,
+          },
+        } : null,
       }
     }))
     console.log('All takes:', allTakes.map(t => ({ id: t.id, title: t.title, authorId: t.authorId })))
 
-    return allTakes
+    const transformedTakes = allTakes.map(take => ({
+      ...take,
+      createdAt: take.createdAt.toISOString(),
+      updatedAt: take.updatedAt.toISOString(),
+      currentUserId: session.user.id,
+      userVote: (take.votes.find(vote => vote.userId === session.user.id)?.type || null) as "UP" | "DOWN" | null,
+      votes: take.votes.map(vote => ({
+        ...vote,
+        createdAt: vote.createdAt.toISOString(),
+        updatedAt: vote.updatedAt.toISOString(),
+      })),
+      community: {
+        id: take.community.id,
+        name: take.community.name,
+        slug: take.community.slug,
+        _count: {
+          takes: take.community._count?.takes || 0,
+          children: take.community._count?.children || 0,
+          members: take.community._count?.members || 0,
+        },
+        parent: take.community.parent ? {
+          id: take.community.parent.id,
+          name: take.community.parent.name,
+          slug: take.community.parent.slug,
+          _count: {
+            takes: take.community.parent._count?.takes || 0,
+            children: take.community.parent._count?.children || 0,
+            members: take.community.parent._count?.members || 0,
+          },
+        } : null,
+      },
+    }))
+
+    return transformedTakes
 
   } catch (error) {
     console.error('Error fetching takes:', error)

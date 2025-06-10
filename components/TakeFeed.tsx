@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useSearchParams, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import SwipeableTakeFeed from './SwipeableTakeFeed'
@@ -10,9 +10,9 @@ import { Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
 import { useSession } from 'next-auth/react'
+import { useTakes } from '@/lib/contexts/TakesContext'
 
 interface TakeFeedProps {
-  takes: Take[]
   communityId?: string
   communitySlug: string | null
   onTakeViewed?: (takeId: string) => void
@@ -21,7 +21,6 @@ interface TakeFeedProps {
 }
 
 export default function TakeFeed({
-  takes = [],
   communityId,
   communitySlug,
   onTakeViewed,
@@ -33,14 +32,8 @@ export default function TakeFeed({
   const view = searchParams.get('view') || defaultView
   const { toast } = useToast()
   const { data: session } = useSession()
-
-  const [localTakes, setLocalTakes] = useState<Take[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-
-  useEffect(() => {
-    setLocalTakes(takes)
-    setIsLoading(false)
-  }, [takes])
+  const { takes, updateTake } = useTakes()
+  const [isLoading, setIsLoading] = useState(false)
 
   // Create URLs for each view
   const createViewUrl = (viewType: string) => {
@@ -53,10 +46,6 @@ export default function TakeFeed({
   const handleTakeViewed = (takeId: string) => {
     if (onTakeViewed) {
       onTakeViewed(takeId)
-      // Remove the viewed take from the list if we're in explore mode
-      if (!communitySlug) {
-        setLocalTakes(prev => prev.filter(take => take.id !== takeId))
-      }
     }
   }
 
@@ -98,15 +87,19 @@ export default function TakeFeed({
         return
       }
 
-      // Update the take in localTakes
-      setLocalTakes(prev =>
-        prev.map(take =>
-          take.id === updatedTake.id ? updatedTake : take
-        )
-      )
+      // Update the take in the context
+      updateTake({
+        ...updatedTake,
+        _count: {
+          ...updatedTake._count,
+          upvotes: updatedTake.votes.filter(v => v.type === 'UP').length,
+          downvotes: updatedTake.votes.filter(v => v.type === 'DOWN').length,
+        },
+        userVote: updatedTake.votes.find(v => v.userId === session.user.id)?.type || null,
+      })
 
       // Only show success message if the vote was added or changed
-      const existingTake = localTakes.find(t => t.id === takeId)
+      const existingTake = takes.find(t => t.id === takeId)
       const existingVote = existingTake?.votes.find(v => v.userId === session.user.id)?.type
       const isRemovingVote = existingVote === type
       if (!isRemovingVote) {
@@ -115,6 +108,21 @@ export default function TakeFeed({
           description: `You ${type === 'UP' ? 'agreed with' : 'disagreed with'} this take`,
         })
       }
+
+      // Broadcast the vote update to other tabs/windows
+      const broadcastChannel = new BroadcastChannel('vote-updates')
+      broadcastChannel.postMessage({
+        takeId: updatedTake.id,
+        updatedTake: {
+          ...updatedTake,
+          _count: {
+            ...updatedTake._count,
+            upvotes: updatedTake.votes.filter(v => v.type === 'UP').length,
+            downvotes: updatedTake.votes.filter(v => v.type === 'DOWN').length,
+          },
+          userVote: updatedTake.votes.find(v => v.userId === session.user.id)?.type || null,
+        }
+      })
     } catch (error) {
       console.error('Error voting:', error)
       toast({
@@ -133,7 +141,7 @@ export default function TakeFeed({
     )
   }
 
-  if (!localTakes.length) {
+  if (!takes.length) {
     return (
       <div className="text-center py-6">
         <p className="text-muted-foreground">No takes available. Check back later!</p>
@@ -171,23 +179,23 @@ export default function TakeFeed({
         </div>
       )}
 
-      {/* Show appropriate view based on preference */}
       {view === 'swipe' ? (
-        <SwipeableTakeFeed
-          initialTakes={localTakes}
-          communityId={communityId}
-          communitySlug={communitySlug}
-          onTakeViewed={handleTakeViewed}
-          onVote={handleVote}
-        />
+        <div className="takes-provider-wrapper">
+          <SwipeableTakeFeed
+            initialTakes={takes}
+            communityId={communityId}
+            communitySlug={communitySlug}
+            onTakeViewed={handleTakeViewed}
+            onVote={handleVote}
+          />
+        </div>
       ) : (
         <div className="space-y-4">
-          {localTakes.map((take) => (
+          {takes.map(take => (
             <TakeCard
               key={take.id}
               take={take}
               currentKultureSlug={communitySlug}
-              onViewed={() => handleTakeViewed(take.id)}
               onVote={handleVote}
             />
           ))}

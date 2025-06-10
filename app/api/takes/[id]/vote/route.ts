@@ -71,93 +71,92 @@ export async function POST(
     }
 
     // Get updated take with all votes and community data
-    const [updatedTake, commentsCount] = await Promise.all([
-      prisma.take.findUnique({
-        where: {
-          id: params.id,
-        },
-        include: {
-          author: {
-            select: {
-              id: true,
-              name: true,
-              username: true,
-              image: true,
-              verified: true,
-            },
+    const updatedTake = await prisma.take.findUnique({
+      where: {
+        id: params.id,
+      },
+      include: {
+        author: {
+          select: {
+            id: true,
+            name: true,
+            username: true,
+            image: true,
+            verified: true,
           },
-          community: {
-            include: {
-              members: true,
-              parent: {
-                include: {
-                  members: true,
-                  parent: {
-                    include: {
-                      members: true,
-                      parent: {
-                        include: {
-                          members: true
-                        }
+        },
+        community: {
+          include: {
+            _count: {
+              select: {
+                members: true,
+                takes: true,
+                children: true
+              }
+            },
+            parent: {
+              include: {
+                _count: {
+                  select: {
+                    members: true,
+                    takes: true,
+                    children: true
+                  }
+                },
+                parent: {
+                  include: {
+                    _count: {
+                      select: {
+                        members: true,
+                        takes: true,
+                        children: true
                       }
                     }
                   }
                 }
               }
             }
-          },
-          votes: true,
+          }
         },
-      }),
-      prisma.comment.count({
-        where: {
-          takeId: params.id
+        votes: true,
+        _count: {
+          select: {
+            comments: true,
+            votes: true
+          }
         }
-      })
-    ])
+      },
+    })
 
     if (!updatedTake) {
       return new NextResponse('Take not found after update', { status: 404 })
     }
 
-    // Transform the data to include member counts but exclude members arrays
+    // Calculate vote counts
+    const upvotes = updatedTake.votes.filter(v => v.type === 'UP').length
+    const downvotes = updatedTake.votes.filter(v => v.type === 'DOWN').length
+
+    // Get user's current vote
+    const userVote = updatedTake.votes.find(v => v.userId === session.user.id)?.type || null
+
+    // Transform the data
     const transformedTake = {
       ...updatedTake,
       currentUserId: session.user.id,
-      userVote: updatedTake.votes.find(v => v.userId === session.user.id)?.type || null,
-      community: {
-        id: updatedTake.community.id,
-        name: updatedTake.community.name,
-        _count: {
-          members: updatedTake.community.members.length
-        },
-        parent: updatedTake.community.parent ? {
-          id: updatedTake.community.parent.id,
-          name: updatedTake.community.parent.name,
-          _count: {
-            members: updatedTake.community.parent.members.length
-          },
-          parent: updatedTake.community.parent.parent ? {
-            id: updatedTake.community.parent.parent.id,
-            name: updatedTake.community.parent.parent.name,
-            _count: {
-              members: updatedTake.community.parent.parent.members.length
-            },
-            parent: updatedTake.community.parent.parent.parent ? {
-              id: updatedTake.community.parent.parent.parent.id,
-              name: updatedTake.community.parent.parent.parent.name,
-              _count: {
-                members: updatedTake.community.parent.parent.parent.members.length
-              }
-            } : null
-          } : null
-        } : null
-      },
+      userVote,
       _count: {
-        comments: commentsCount,
-        upvotes: updatedTake.votes.filter(v => v.type === 'UP').length,
-        downvotes: updatedTake.votes.filter(v => v.type === 'DOWN').length,
-      }
+        ...updatedTake._count,
+        upvotes,
+        downvotes,
+      },
+      votes: updatedTake.votes.map(vote => ({
+        id: vote.id,
+        type: vote.type,
+        userId: vote.userId,
+        takeId: vote.takeId,
+        createdAt: vote.createdAt,
+        updatedAt: vote.updatedAt
+      }))
     }
 
     return NextResponse.json(transformedTake)

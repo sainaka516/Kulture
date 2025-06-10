@@ -1,13 +1,11 @@
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 import { Loader2 } from 'lucide-react'
-import TakeCard from '@/components/TakeCard'
-import Comments from '@/components/Comments'
 import prisma from '@/lib/prisma'
-import { CommunityCard } from "@/components/CommunityCard"
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { transformTake } from '@/lib/utils'
+import TakeClient from './take-client'
 
 interface TakePageProps {
   params: {
@@ -26,15 +24,34 @@ export default async function TakePage({ params }: TakePageProps) {
     include: {
       author: true,
       community: {
-        select: {
-          id: true,
-          name: true,
-          slug: true,
+        include: {
           _count: {
             select: {
               members: true,
               takes: true,
               children: true,
+            },
+          },
+          parent: {
+            include: {
+              _count: {
+                select: {
+                  members: true,
+                  takes: true,
+                  children: true,
+                },
+              },
+              parent: {
+                include: {
+                  _count: {
+                    select: {
+                      members: true,
+                      takes: true,
+                      children: true,
+                    },
+                  },
+                },
+              },
             },
           },
         },
@@ -51,6 +68,7 @@ export default async function TakePage({ params }: TakePageProps) {
       _count: {
         select: {
           comments: true,
+          votes: true,
         },
       },
     },
@@ -60,20 +78,27 @@ export default async function TakePage({ params }: TakePageProps) {
     notFound()
   }
 
-  // Replace the manual transformation with the utility function
-  const transformedTake = transformTake(take, session?.user?.id)
+  // Calculate vote counts
+  const upvotes = take.votes.filter(vote => vote.type === 'UP').length
+  const downvotes = take.votes.filter(vote => vote.type === 'DOWN').length
+
+  // Transform the take with proper vote counts
+  const transformedTake = {
+    ...transformTake(take, session?.user?.id),
+    _count: {
+      ...take._count,
+      upvotes,
+      downvotes,
+    },
+  }
 
   return (
-    <div className="container flex flex-col items-center justify-between gap-6 py-8 md:flex-row md:items-start">
-      <div className="w-full md:w-3/4">
-        <TakeCard take={transformedTake} currentKultureSlug={null} />
-        <div className="mt-6">
-          <Comments takeId={take.id} initialComments={take.comments} />
-        </div>
+    <Suspense fallback={
+      <div className="flex justify-center py-8">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
-      <div className="w-full md:w-1/4">
-        <CommunityCard community={take.community} />
-      </div>
-    </div>
+    }>
+      <TakeClient take={transformedTake} comments={take.comments} />
+    </Suspense>
   )
 } 

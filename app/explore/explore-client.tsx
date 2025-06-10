@@ -6,6 +6,7 @@ import { Take } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Loader2, RefreshCw } from 'lucide-react'
+import { TakesProvider } from '@/lib/contexts/TakesContext'
 
 interface ExploreClientProps {
   initialTakes: Take[]
@@ -152,12 +153,13 @@ export default function ExploreClient({ initialTakes }: ExploreClientProps) {
 
       {showingHistory ? (
         <div className="space-y-6">
-          <TakeFeed
-            takes={viewedTakes}
-            communitySlug={null}
-            defaultView="swipe"
-            showViewSwitcher={false}
-          />
+          <TakesProvider initialTakes={viewedTakes}>
+            <TakeFeed
+              communitySlug={null}
+              defaultView="swipe"
+              showViewSwitcher={false}
+            />
+          </TakesProvider>
           {hasMore && (
             <div className="flex justify-center">
               <Button
@@ -180,13 +182,14 @@ export default function ExploreClient({ initialTakes }: ExploreClientProps) {
       ) : (
         <div className="space-y-6">
           <div className="max-w-2xl mx-auto">
-            <TakeFeed
-              takes={takes}
-              communitySlug={null}
-              onTakeViewed={markTakeAsViewed}
-              defaultView="swipe"
-              showViewSwitcher={false}
-            />
+            <TakesProvider initialTakes={takes}>
+              <TakeFeed
+                communitySlug={null}
+                onTakeViewed={markTakeAsViewed}
+                defaultView="swipe"
+                showViewSwitcher={false}
+              />
+            </TakesProvider>
           </div>
           {hasMore && takes.length > 0 && (
             <div className="flex justify-center gap-4 mt-4">

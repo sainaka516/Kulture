@@ -1,6 +1,7 @@
 'use client'
 
 import { Suspense, useState, useEffect } from 'react'
+import dynamic from 'next/dynamic'
 import TakeFeed from '@/components/TakeFeed'
 import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -13,6 +14,7 @@ import { Card } from '@/components/ui/card'
 import { Users, MessageSquare, Layers } from 'lucide-react'
 import MembersList from '@/components/MembersList'
 import { transformTake } from '@/lib/utils'
+import { TakesProvider } from '@/lib/contexts/TakesContext'
 
 interface CommunityClientProps {
   community: {
@@ -26,10 +28,23 @@ interface CommunityClientProps {
       image: string | null
     }
     parent?: {
+      id: string
       name: string
       slug: string
+      parent?: {
+        id: string
+        name: string
+        slug: string
+        _count?: {
+          members: number
+          takes: number
+          children: number
+        }
+      } | null
       _count?: {
         members: number
+        takes: number
+        children: number
       }
     } | null
     children: Array<{
@@ -63,12 +78,26 @@ interface CommunityClientProps {
           id: string
           name: string
           slug: string
+          parent?: {
+            id: string
+            name: string
+            slug: string
+            _count?: {
+              members: number
+              takes: number
+              children: number
+            }
+          } | null
           _count?: {
             members: number
+            takes: number
+            children: number
           }
         } | null
         _count?: {
           members: number
+          takes: number
+          children: number
         }
       }
       votes: Array<{
@@ -140,6 +169,7 @@ export default function CommunityClient({ community }: CommunityClientProps) {
     <div className="flex items-center gap-2">
       <Link 
         href={`/k/${community.parent?.slug}`}
+        prefetch={false}
         className="text-muted-foreground hover:text-foreground transition-colors"
       >
         {community.parent?.name}
@@ -191,165 +221,190 @@ export default function CommunityClient({ community }: CommunityClientProps) {
 
   const transformedTakes = community.takes.map(take => {
     const transformedTake = transformTake(take, session?.user?.id)
+    
+    // Calculate member counts for verification
+    const currentMemberCount = take.community._count?.members || community._count.members
+    const parentMemberCount = take.community.parent?._count?.members || community.parent?._count?.members || 0
+    const grandparentMemberCount = take.community.parent?.parent?._count?.members || community.parent?.parent?._count?.members || 0
+
+    // Calculate upvotes for verification
+    const upvoteCount = take.votes.filter(vote => vote.type === 'UP').length
+    
+    // Calculate verification status for each level
+    const isVerifiedInCurrent = currentMemberCount > 0 && upvoteCount >= Math.ceil(currentMemberCount * 0.5)
+    const isVerifiedInParent = parentMemberCount > 0 && upvoteCount >= Math.ceil(parentMemberCount * 0.5)
+    const isVerifiedInGrandparent = grandparentMemberCount > 0 && upvoteCount >= Math.ceil(grandparentMemberCount * 0.5)
+    
+    // Calculate total verification count
+    const verifiedCount = [isVerifiedInCurrent, isVerifiedInParent, isVerifiedInGrandparent].filter(Boolean).length
+
     return {
       ...transformedTake,
       updatedAt: transformedTake.createdAt,
-      communityId: community.id,
+      communityId: take.community.id,
       authorId: transformedTake.author.id,
-      votes: transformedTake.votes.map(vote => ({
-        ...vote,
-        createdAt: vote.createdAt.toISOString(),
-        updatedAt: vote.updatedAt.toISOString(),
-      })),
-      community: {
-        id: transformedTake.community.id,
-        name: transformedTake.community.name,
-        slug: transformedTake.community.slug,
-        _count: {
-          takes: transformedTake.community._count?.takes || 0,
-          children: transformedTake.community._count?.children || 0,
-          members: transformedTake.community._count?.members || 0,
-        },
-        parent: transformedTake.community.parent ? {
-          id: transformedTake.community.parent.id,
-          name: transformedTake.community.parent.name,
-          slug: transformedTake.community.parent.slug,
-          _count: {
-            takes: transformedTake.community.parent._count?.takes || 0,
-            children: transformedTake.community.parent._count?.children || 0,
-            members: transformedTake.community.parent._count?.members || 0,
-          },
-        } : null,
+      userVote: take.votes.find(vote => vote.userId === session?.user?.id)?.type || null,
+      _count: {
+        ...transformedTake._count,
+        upvotes: upvoteCount,
+        downvotes: take.votes.filter(vote => vote.type === 'DOWN').length,
       },
+      community: {
+        ...take.community,
+        _count: {
+          ...take.community._count,
+          members: currentMemberCount
+        },
+        parent: take.community.parent ? {
+          ...take.community.parent,
+          _count: {
+            ...take.community.parent._count,
+            members: parentMemberCount
+          },
+          parent: take.community.parent.parent ? {
+            ...take.community.parent.parent,
+            _count: {
+              ...take.community.parent.parent._count,
+              members: grandparentMemberCount
+            }
+          } : null
+        } : null
+      },
+      votes: take.votes.map(vote => ({
+        ...vote,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      })),
+      verifiedCount
     }
   })
 
   return (
-    <div className="container max-w-6xl py-6">
-      <div className="mb-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">{title}</h1>
-            {community.description && (
-              <p className="mt-2 text-muted-foreground">{community.description}</p>
+    <TakesProvider initialTakes={transformedTakes}>
+      <div className="container max-w-6xl py-6">
+        <div className="mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold">{title}</h1>
+              {community.description && (
+                <p className="mt-2 text-muted-foreground">{community.description}</p>
+              )}
+            </div>
+            <div className="flex items-center gap-4">
+              <Button 
+                onClick={handleJoinOrLeave} 
+                disabled={isLoading}
+                variant={isMember ? "outline" : "default"}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {isMember ? 'Leaving...' : 'Joining...'}
+                  </>
+                ) : (
+                  isMember ? 'Leave Kulture' : 'Join Kulture'
+                )}
+              </Button>
+              <Link href={`/create-kulture?parent=${community.slug}`}>
+                <Button variant="outline">
+                  Create Associated Kulture
+                </Button>
+              </Link>
+              <Link href={`/submit?kulture=${community.id}`}>
+                <Button>Share Take</Button>
+              </Link>
+            </div>
+          </div>
+
+          {/* Community Stats */}
+          <div className="mt-6 flex items-center gap-6 text-sm text-muted-foreground">
+            <MembersList 
+              communityName={community.name}
+              memberCount={community._count.members}
+              slug={community.slug}
+            />
+            <div className="flex items-center gap-2">
+              <MessageSquare className="h-4 w-4" />
+              <span>{community._count.takes} takes</span>
+            </div>
+            {community._count.children > 0 && (
+              <div className="flex items-center gap-2">
+                <Layers className="h-4 w-4" />
+                <span>{community._count.children} associated kultures</span>
+              </div>
             )}
           </div>
-          <div className="flex items-center gap-4">
-            <Button 
-              onClick={handleJoinOrLeave} 
-              disabled={isLoading}
-              variant={isMember ? "outline" : "default"}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {isMember ? 'Leaving...' : 'Joining...'}
-                </>
-              ) : (
-                isMember ? 'Leave Kulture' : 'Join Kulture'
-              )}
-            </Button>
-            <Link href={`/create-kulture?parent=${community.slug}`}>
-              <Button variant="outline">
-                Create Associated Kulture
-              </Button>
-            </Link>
-            <Link href={`/submit?kulture=${community.id}`}>
-              <Button>Share Take</Button>
-            </Link>
-          </div>
         </div>
 
-        {/* Community Stats */}
-        <div className="mt-6 flex items-center gap-6 text-sm text-muted-foreground">
-          <MembersList 
-            communityName={community.name}
-            memberCount={community._count.members}
-            slug={community.slug}
-          />
-          <div className="flex items-center gap-2">
-            <MessageSquare className="h-4 w-4" />
-            <span>{community._count.takes} takes</span>
-          </div>
-          {community._count.children > 0 && (
-            <div className="flex items-center gap-2">
-              <Layers className="h-4 w-4" />
-              <span>{community._count.children} associated kultures</span>
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Main Content */}
-        <div className="lg:col-span-3">
-          <Suspense
-            fallback={
-              <div className="flex justify-center py-6">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            }
-          >
-            <TakeFeed 
-              takes={transformedTakes} 
-              communityId={community.id}
-              communitySlug={community.slug}
-              defaultView="swipe"
-              showViewSwitcher={true}
-            />
-          </Suspense>
-        </div>
-
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* About Section */}
-          <Card className="p-6">
-            <h2 className="font-semibold mb-4">About {community.name}</h2>
-            <dl className="space-y-4">
-              <div>
-                <dt className="text-sm text-muted-foreground">Created by</dt>
-                <dd className="font-medium">{community.owner.name}</dd>
-              </div>
-              <div>
-                <dt className="text-sm text-muted-foreground">Members</dt>
-                <dd className="font-medium">{community._count.members}</dd>
-              </div>
-              <div>
-                <dt className="text-sm text-muted-foreground">Takes</dt>
-                <dd className="font-medium">{community._count.takes}</dd>
-              </div>
-              {community._count.children > 0 && (
-                <div>
-                  <dt className="text-sm text-muted-foreground">Associated Kultures</dt>
-                  <dd className="font-medium">{community._count.children}</dd>
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Main Content */}
+          <div className="lg:col-span-3">
+            <Suspense
+              fallback={
+                <div className="flex justify-center py-6">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                 </div>
-              )}
-            </dl>
-          </Card>
+              }
+            >
+              <TakeFeed 
+                communityId={community.id}
+                communitySlug={community.slug}
+                showViewSwitcher
+              />
+            </Suspense>
+          </div>
 
-          {/* Associated Kultures */}
-          {community.children.length > 0 && (
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* About Section */}
             <Card className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold">Associated Kultures</h2>
-                <Link href={`/k/${community.slug}/associated`}>
-                  <Button variant="ghost" size="sm" className="text-sm">
-                    View All
-                  </Button>
-                </Link>
-              </div>
-              <div className="space-y-2">
-                <KultureGrid kultures={community.children.slice(0, 3)} />
-                {community.children.length > 3 && (
-                  <p className="text-sm text-muted-foreground text-center mt-4">
-                    And {community.children.length - 3} more associated kultures...
-                  </p>
+              <h2 className="font-semibold mb-4">About {community.name}</h2>
+              <dl className="space-y-4">
+                <div>
+                  <dt className="text-sm text-muted-foreground">Created by</dt>
+                  <dd className="font-medium">{community.owner.name}</dd>
+                </div>
+                <div>
+                  <dt className="text-sm text-muted-foreground">Members</dt>
+                  <dd className="font-medium">{community._count.members}</dd>
+                </div>
+                <div>
+                  <dt className="text-sm text-muted-foreground">Takes</dt>
+                  <dd className="font-medium">{community._count.takes}</dd>
+                </div>
+                {community._count.children > 0 && (
+                  <div>
+                    <dt className="text-sm text-muted-foreground">Associated Kultures</dt>
+                    <dd className="font-medium">{community._count.children}</dd>
+                  </div>
                 )}
-              </div>
+              </dl>
             </Card>
-          )}
+
+            {/* Associated Kultures */}
+            {community.children.length > 0 && (
+              <Card className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold">Associated Kultures</h2>
+                  <Link href={`/k/${community.slug}/associated`}>
+                    <Button variant="ghost" size="sm" className="text-sm">
+                      View All
+                    </Button>
+                  </Link>
+                </div>
+                <div className="space-y-2">
+                  <KultureGrid kultures={community.children.slice(0, 3)} />
+                  {community.children.length > 3 && (
+                    <p className="text-sm text-muted-foreground text-center mt-4">
+                      And {community.children.length - 3} more associated kultures...
+                    </p>
+                  )}
+                </div>
+              </Card>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+    </TakesProvider>
   )
 } 

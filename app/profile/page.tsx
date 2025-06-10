@@ -10,6 +10,7 @@ import { format } from 'date-fns'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import TakeFeed from '@/components/TakeFeed'
 import { Take } from '@/lib/types'
+import { TakesProvider } from '@/lib/contexts/TakesContext'
 
 interface UserStats {
   totalTakes: number
@@ -122,12 +123,13 @@ export default function ProfilePage() {
         </TabsList>
         
         <TabsContent value="takes" className="space-y-4">
-          <TakeFeed 
-            takes={takes} 
-            communitySlug={null}
-            defaultView="list"
-            showViewSwitcher={true}
-          />
+          <TakesProvider initialTakes={takes}>
+            <TakeFeed 
+              communitySlug={null}
+              defaultView="list"
+              showViewSwitcher={true}
+            />
+          </TakesProvider>
           {takes.length === 0 && (
             <p className="text-muted-foreground">You haven't shared any takes yet.</p>
           )}
