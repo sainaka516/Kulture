@@ -32,6 +32,9 @@ interface SearchResult {
     title: string
     content: string
     createdAt: string
+    updatedAt: string
+    communityId: string
+    authorId: string
     author: {
       id: string
       name: string
@@ -44,6 +47,10 @@ interface SearchResult {
       name: string
       slug: string
     }
+    votes: Array<{
+      type: 'UP' | 'DOWN'
+      userId: string
+    }>
     _count: {
       comments: number
       upvotes: number
