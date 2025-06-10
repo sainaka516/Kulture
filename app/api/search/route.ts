@@ -78,12 +78,16 @@ export async function GET(request: Request) {
           title: true,
           content: true,
           createdAt: true,
+          updatedAt: true,
+          communityId: true,
+          authorId: true,
           author: {
             select: {
               id: true,
               name: true,
               username: true,
               image: true,
+              verified: true
             },
           },
           community: {
@@ -91,6 +95,47 @@ export async function GET(request: Request) {
               id: true,
               name: true,
               slug: true,
+              _count: {
+                select: {
+                  members: true
+                }
+              },
+              parent: {
+                select: {
+                  id: true,
+                  name: true,
+                  slug: true,
+                  _count: {
+                    select: {
+                      members: true
+                    }
+                  },
+                  parent: {
+                    select: {
+                      id: true,
+                      name: true,
+                      slug: true,
+                      _count: {
+                        select: {
+                          members: true
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              children: {
+                select: {
+                  id: true,
+                  name: true,
+                  slug: true,
+                  _count: {
+                    select: {
+                      members: true
+                    }
+                  }
+                }
+              }
             },
           },
           votes: true,
