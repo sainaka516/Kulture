@@ -77,7 +77,7 @@ interface TakeCardProps {
   take: ExtendedTake;
   onVote?: (takeId: string, type: 'UP' | 'DOWN') => Promise<void>;
   showCommunity?: boolean;
-  currentKultureSlug?: string;
+  currentKultureSlug?: string | null;
   onViewed?: () => void;
 }
 
