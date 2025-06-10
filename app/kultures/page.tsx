@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 }
 
 export default async function KulturesPage() {
-  // First get all parent communities with their member counts
+  // Get all parent communities with their member counts and relations
   const communities = await prisma.community.findMany({
     where: {
       parentId: null,
@@ -23,6 +23,12 @@ export default async function KulturesPage() {
           id: true,
           name: true,
           image: true,
+        },
+      },
+      parent: {
+        select: {
+          name: true,
+          slug: true,
         },
       },
       members: true,

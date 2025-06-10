@@ -5,11 +5,31 @@ import Link from 'next/link'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Community } from '@prisma/client'
+import { Community, CommunityMember, Take } from '@prisma/client'
 import KultureList from '@/components/KultureList'
 
+interface KultureWithCounts extends Community {
+  owner: {
+    id: string
+    name: string | null
+    image: string | null
+  }
+  parent?: {
+    name: string
+    slug: string
+  } | null
+  members: CommunityMember[]
+  takes: Take[]
+  children: Community[]
+  _count: {
+    members: number
+    takes: number
+    children: number
+  }
+}
+
 interface AssociatedKulturesClientProps {
-  communities: Community[]
+  communities: KultureWithCounts[]
 }
 
 export default function AssociatedKulturesClient({ communities }: AssociatedKulturesClientProps) {
