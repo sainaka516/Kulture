@@ -138,7 +138,16 @@ export async function GET(request: Request) {
               }
             },
           },
-          votes: true,
+          votes: {
+            select: {
+              id: true,
+              type: true,
+              userId: true,
+              takeId: true,
+              createdAt: true,
+              updatedAt: true
+            }
+          },
           _count: {
             select: {
               comments: true,
@@ -159,6 +168,14 @@ export async function GET(request: Request) {
         userVote: session?.user?.id 
           ? take.votes.find(vote => vote.userId === session.user.id)?.type || null
           : null,
+        votes: take.votes.map(vote => ({
+          id: vote.id,
+          type: vote.type,
+          userId: vote.userId,
+          takeId: vote.takeId,
+          createdAt: vote.createdAt,
+          updatedAt: vote.updatedAt
+        })),
         _count: {
           ...take._count,
           upvotes: take.votes.filter(vote => vote.type === 'UP').length,
