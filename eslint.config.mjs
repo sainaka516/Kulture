@@ -10,15 +10,21 @@ const compat = new FlatCompat({
   recommendedConfig: true
 });
 
+const nextConfig = compat.extends("next/core-web-vitals")[0];
+const typescriptConfig = compat.config({
+  extends: ["plugin:@typescript-eslint/recommended"]
+})[0];
+
 export default [
   {
     ignores: [".next/*", "node_modules/*"]
   },
-  ...compat.extends("next/core-web-vitals"),
   {
-    files: ["**/*.ts", "**/*.tsx"],
-    ...compat.config({
-      extends: ["plugin:@typescript-eslint/recommended"]
-    })
+    ...nextConfig,
+    files: ["**/*.{js,jsx,ts,tsx}"]
+  },
+  {
+    ...typescriptConfig,
+    files: ["**/*.{ts,tsx}"]
   }
 ];
