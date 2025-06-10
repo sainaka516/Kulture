@@ -1,3 +1,6 @@
+export const dynamic = 'force-dynamic'
+
+import { Metadata } from 'next'
 import { Suspense } from 'react'
 import { Loader2, Trophy } from 'lucide-react'
 import LeaderboardClient from './leaderboard-client'
