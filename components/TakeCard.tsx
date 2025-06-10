@@ -49,12 +49,14 @@ interface SimpleCommunity {
   children?: SimpleCommunity[];
 }
 
-interface ExtendedTake extends Omit<Take, 'community' | 'votes'> {
+interface ExtendedTake extends Omit<Take, 'community' | 'votes' | 'createdAt' | 'updatedAt'> {
   community: SimpleCommunity;
   votes: Array<Omit<Vote, 'createdAt' | 'updatedAt'> & {
     createdAt: string;
     updatedAt: string;
   }>;
+  createdAt: string;
+  updatedAt: string;
   author: {
     id: string;
     name: string | null;
