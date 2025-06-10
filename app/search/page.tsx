@@ -1,3 +1,6 @@
+export const dynamic = 'force-dynamic'
+
+import { Metadata } from 'next'
 import SearchResults from './search-results'
 
 export const metadata = {
