@@ -37,7 +37,7 @@ interface SearchResult {
     authorId: string
     author: {
       id: string
-      name: string
+      name: string | null
       username: string
       image: string | null
       verified: boolean
@@ -46,6 +46,33 @@ interface SearchResult {
       id: string
       name: string
       slug: string
+      parent?: {
+        id: string
+        name: string
+        slug: string
+        _count?: {
+          members: number
+        }
+        parent?: {
+          id: string
+          name: string
+          slug: string
+          _count?: {
+            members: number
+          }
+        } | null
+      } | null
+      _count?: {
+        members: number
+      }
+      children?: Array<{
+        id: string
+        name: string
+        slug: string
+        _count?: {
+          members: number
+        }
+      }>
     }
     votes: Array<{
       id: string
