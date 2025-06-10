@@ -204,7 +204,7 @@ export default function SearchResults() {
               <h2 className="text-xl font-semibold mb-4">Takes</h2>
               <div className="grid gap-4">
                 {results.takes.map((take) => (
-                  <TakeCard key={take.id} take={take} currentKultureSlug={null} />
+                  <TakeCard key={take.id} take={take} currentKultureSlug={undefined} />
                 ))}
               </div>
             </div>
@@ -273,7 +273,7 @@ export default function SearchResults() {
           {results?.takes.length ? (
             <div className="grid gap-4">
               {results.takes.map((take) => (
-                <TakeCard key={take.id} take={take} currentKultureSlug={null} />
+                <TakeCard key={take.id} take={take} currentKultureSlug={undefined} />
               ))}
             </div>
           ) : (
