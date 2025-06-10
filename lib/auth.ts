@@ -11,6 +11,39 @@ const loginSchema = z.object({
   password: z.string().min(1, "Password is required"),
 })
 
+declare module "next-auth" {
+  interface Session {
+    user: {
+      id: string
+      name: string
+      email: string
+      username: string
+      image?: string
+      verified: boolean
+    }
+  }
+
+  interface User {
+    id: string
+    name: string
+    email: string
+    username: string
+    image?: string
+    verified: boolean
+  }
+}
+
+declare module "next-auth/jwt" {
+  interface JWT {
+    id: string
+    name: string
+    email: string
+    username: string
+    picture?: string
+    verified: boolean
+  }
+}
+
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma) as any,
   session: {
@@ -69,7 +102,7 @@ export const authOptions: NextAuthOptions = {
           email: user.email || "",
           name: user.name || "",
           username: user.username,
-          image: user.image,
+          image: user.image || undefined,
           verified: user.verified
         }
       }

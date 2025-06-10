@@ -9,11 +9,13 @@ export interface UserAvatarProps {
 export function UserAvatar({ user, className }: UserAvatarProps) {
   return (
     <Avatar className={className}>
-      <AvatarImage src={user?.image || null} alt={user?.name || "User"} />
+      <AvatarImage src={user?.image || undefined} alt={user?.name || user?.username || "User"} />
       <AvatarFallback>
         {user?.name
           ? user.name.charAt(0).toUpperCase()
-          : user?.username.charAt(0).toUpperCase()}
+          : user?.username
+          ? user.username.charAt(0).toUpperCase()
+          : "?"}
       </AvatarFallback>
     </Avatar>
   )

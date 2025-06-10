@@ -31,7 +31,12 @@ const signupSchema = z.object({
   path: ["confirmPassword"],
 });
 
-type FormData = z.infer<typeof signupSchema> | z.infer<typeof loginSchema>;
+interface FormData {
+  username: string
+  password: string
+  email?: string
+  confirmPassword?: string
+}
 
 export default function UserAuthForm({
   isSignUp = false,

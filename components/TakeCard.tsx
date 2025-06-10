@@ -49,28 +49,51 @@ interface SimpleCommunity {
   children?: SimpleCommunity[];
 }
 
-export type ExtendedTake = Take & {
+export type ExtendedTake = {
+  id: string
+  title: string
+  content: string | null
+  createdAt: string | Date
+  updatedAt: string | Date
+  communityId: string
+  authorId: string
+  community: {
+    id: string
+    name: string
+    slug: string
+    parent?: {
+      id: string
+      name: string
+      slug: string
+      parent?: {
+        id: string
+        name: string
+        slug: string
+      } | null
+    } | null
+    _count: {
+      takes: number
+      children: number
+      members: number
+    }
+  }
+  author: {
+    id: string
+    name: string | null
+    username: string
+    image: string | null
+    verified: boolean
+  }
   votes: (Vote & {
     createdAt: string | Date
     updatedAt: string | Date
   })[]
-  community: SimpleCommunity;
-  createdAt: string;
-  updatedAt: string;
-  author: {
-    id: string;
-    name: string | null;
-    username: string;
-    image: string | null;
-    verified: boolean;
-  };
   _count: {
-    comments: number;
-    upvotes: number;
-    downvotes: number;
-  };
-  currentUserId?: string;
-  userVote?: 'UP' | 'DOWN' | null;
+    upvotes: number
+    downvotes: number
+    comments: number
+  }
+  userVote?: "UP" | "DOWN" | null
 }
 
 interface TakeCardProps {
@@ -82,7 +105,7 @@ interface TakeCardProps {
 }
 
 export default function TakeCard({ take, currentKultureSlug, onVote }: TakeCardProps) {
-  const isAuthor = take.author.id === take.currentUserId
+  const isAuthor = take.author.id === take.authorId
 
   // Calculate vote score with null check
   const voteScore = (take.votes || []).reduce((acc, vote) => {
