@@ -21,7 +21,12 @@ export default [
   },
   {
     ...nextConfig,
-    files: ["**/*.{js,jsx,ts,tsx}"]
+    files: ["**/*.{js,jsx,ts,tsx}"],
+    rules: {
+      ...nextConfig.rules,
+      "react/react-in-jsx-scope": "off",
+      "react/no-unescaped-entities": "off"
+    }
   },
   {
     ...typescriptConfig,
