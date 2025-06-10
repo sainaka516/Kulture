@@ -127,7 +127,8 @@ export default function LeaderboardClient() {
                 <UserAvatar
                   user={{
                     image: user.image,
-                    username: user.name || ''
+                    username: user.name || '',
+                    name: user.name || ''
                   }}
                   className="h-10 w-10"
                 />
@@ -190,7 +191,8 @@ export default function LeaderboardClient() {
                   <UserAvatar
                     user={{
                       image: take.author.image,
-                      username: take.author.username
+                      username: take.author.username,
+                      name: take.author.name || take.author.username
                     }}
                     className="h-10 w-10"
                   />

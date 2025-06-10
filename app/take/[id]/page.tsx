@@ -4,7 +4,7 @@ import { Loader2 } from 'lucide-react'
 import TakeCard from '@/components/TakeCard'
 import Comments from '@/components/Comments'
 import prisma from '@/lib/prisma'
-import CommunityCard from '@/components/CommunityCard'
+import { CommunityCard } from "@/components/CommunityCard"
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 
