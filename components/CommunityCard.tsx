@@ -1,13 +1,15 @@
 import Link from 'next/link'
-import { Card } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Users, MessageSquare } from 'lucide-react'
+import { Community } from "@prisma/client"
+import { Button } from "@/components/ui/button"
 
-interface CommunityCardProps {
+export interface CommunityCardProps {
   community: {
     id: string
     name: string
     slug: string
-    description: string | null
+    description?: string | null
     parent?: {
       name: string
       slug: string
@@ -24,7 +26,7 @@ interface CommunityCardProps {
   }
 }
 
-export default function CommunityCard({ community }: CommunityCardProps) {
+export function CommunityCard({ community }: CommunityCardProps) {
   // Helper function to build the hierarchy display
   const getHierarchyDisplay = () => {
     if (!community.parent) {
@@ -61,47 +63,26 @@ export default function CommunityCard({ community }: CommunityCardProps) {
   }
 
   return (
-    <Card className="overflow-hidden">
-      <div className="p-6">
-        <div className="flex items-start justify-between">
-          <div>
-            <Link
-              href={`/k/${community.slug}`}
-              className="text-lg font-semibold hover:text-purple-900 dark:hover:text-purple-400"
-            >
-              {getHierarchyDisplay()}
-            </Link>
-            {community.parent && (
-              <div className="text-sm text-muted-foreground mt-1">
-                {community.parent.parent 
-                  ? `Sub-community of ${community.parent.name} under ${community.parent.parent.name}`
-                  : `Sub-community of ${community.parent.name}`
-                }
-              </div>
-            )}
+    <Card>
+      <CardHeader>
+        <CardTitle>
+          <Link href={`/k/${community.slug}`}>{community.name}</Link>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {community.description && <p className="text-sm text-muted-foreground">{community.description}</p>}
+        <div className="mt-4 flex items-center gap-4">
+          <div className="text-sm">
+            <span className="font-semibold">{community._count.takes}</span> takes
+          </div>
+          <div className="text-sm">
+            <span className="font-semibold">{community._count.children}</span> subkultures
+          </div>
+          <div className="text-sm">
+            <span className="font-semibold">{community._count.members}</span> members
           </div>
         </div>
-
-        <p className="mt-2 text-sm text-muted-foreground line-clamp-2">
-          {community.description || 'No description available.'}
-        </p>
-
-        <div className="mt-4 flex items-center gap-4 text-sm text-muted-foreground">
-          <div className="flex items-center">
-            <Users className="h-4 w-4 mr-1" />
-            {community._count?.members ?? 0} members
-          </div>
-          <div className="flex items-center">
-            <MessageSquare className="h-4 w-4 mr-1" />
-            {community._count?.takes ?? 0} takes
-          </div>
-          {(community._count?.children ?? 0) > 0 && (
-            <div className="flex items-center">
-              <span>{community._count?.children ?? 0} sub-communities</span>
-            </div>
-          )}
-        </div>
-      </div>
+      </CardContent>
     </Card>
   )
 } 

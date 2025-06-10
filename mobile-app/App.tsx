@@ -1,14 +1,16 @@
+import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { Provider as PaperProvider, MD3LightTheme as DefaultTheme } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import HomeScreen from './src/screens/HomeScreen';
+import HomeScreen from './screens/HomeScreen';
 import ExploreScreen from './src/screens/ExploreScreen';
 import CommunitiesScreen from './src/screens/CommunitiesScreen';
-import ProfileScreen from './src/screens/ProfileScreen';
+import ProfileScreen from './screens/ProfileScreen';
+import { RootStackParamList } from './types';
 
-const Tab = createBottomTabNavigator();
+const Tab = createBottomTabNavigator<RootStackParamList>();
 
 // Customize the theme
 const theme = {
@@ -40,7 +42,7 @@ export default function App() {
                   iconName = focused ? 'person' : 'person-outline';
                 }
 
-                return <Ionicons name={iconName} size={size} color={color} />;
+                return <Ionicons name={iconName as any} size={size} color={color} />;
               },
               tabBarActiveTintColor: theme.colors.primary,
               tabBarInactiveTintColor: 'gray',

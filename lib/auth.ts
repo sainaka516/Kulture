@@ -12,20 +12,30 @@ const loginSchema = z.object({
 })
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
+  adapter: PrismaAdapter(prisma) as any,
   session: {
     strategy: 'jwt',
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   pages: {
     signIn: '/login',
-    error: '/error',
+    error: '/login',
   },
   debug: true,
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      profile(profile) {
+        return {
+          id: profile.sub,
+          name: profile.name,
+          email: profile.email,
+          image: profile.picture,
+          username: profile.email.split("@")[0],
+          verified: true
+        }
+      }
     }),
     CredentialsProvider({
       name: 'credentials',
@@ -33,54 +43,34 @@ export const authOptions: NextAuthOptions = {
         username: { label: 'Username', type: 'text' },
         password: { label: 'Password', type: 'password' },
       },
-      async authorize(credentials) {
-        try {
-          if (!credentials?.username || !credentials?.password) {
-            console.log('[AUTH] Missing credentials')
-            return null
+      async authorize(credentials, req) {
+        if (!credentials?.username || !credentials?.password) {
+          throw new Error("Invalid credentials")
+        }
+
+        const user = await prisma.user.findUnique({
+          where: {
+            username: credentials.username
           }
+        })
 
-          const user = await prisma.user.findFirst({
-            where: {
-              OR: [
-                { username: credentials.username.toLowerCase() },
-                { email: credentials.username.toLowerCase() }
-              ]
-            },
-            select: {
-              id: true,
-              email: true,
-              username: true,
-              name: true,
-              password: true,
-              verified: true
-            }
-          })
+        if (!user || !user.password) {
+          throw new Error("Invalid credentials")
+        }
 
-          if (!user || !user.password) {
-            console.log('[AUTH] User not found or no password set')
-            return null
-          }
+        const isPasswordValid = await bcrypt.compare(credentials.password, user.password)
 
-          const isPasswordValid = await bcrypt.compare(
-            credentials.password,
-            user.password
-          )
+        if (!isPasswordValid) {
+          throw new Error("Invalid credentials")
+        }
 
-          if (!isPasswordValid) {
-            console.log('[AUTH] Invalid password')
-            return null
-          }
-
-          return {
-            id: user.id,
-            email: user.email,
-            username: user.username,
-            name: user.name || user.username
-          }
-        } catch (error) {
-          console.error('[AUTH] Error in authorize:', error)
-          return null
+        return {
+          id: user.id,
+          email: user.email || "",
+          name: user.name || "",
+          username: user.username,
+          image: user.image,
+          verified: user.verified
         }
       }
     }),
@@ -170,23 +160,59 @@ export const authOptions: NextAuthOptions = {
         return false
       }
     },
-    async jwt({ token, user, account, trigger }) {
-      if (trigger === 'signIn' && user) {
-        token.sub = user.id
-        token.username = user.username
-        token.name = user.name
-        token.email = user.email
-        token.picture = user.image
+    async jwt({ token, user, account, profile }) {
+      if (account?.type === "oauth" && profile) {
+        const dbUser = await prisma.user.findFirst({
+          where: {
+            OR: [
+              { email: profile.email },
+              { username: profile.email?.split("@")[0] }
+            ]
+          }
+        })
+
+        if (!dbUser) {
+          const newUser = await prisma.user.create({
+            data: {
+              email: profile.email,
+              name: profile.name,
+              username: profile.email?.split("@")[0] || "",
+              image: profile.picture,
+              verified: true
+            }
+          })
+          token.id = newUser.id
+          token.username = newUser.username
+          token.verified = newUser.verified
+        } else {
+          token.id = dbUser.id
+          token.username = dbUser.username
+          token.verified = dbUser.verified
+          if (dbUser.image !== profile.picture) {
+            await prisma.user.update({
+              where: { id: dbUser.id },
+              data: { image: profile.picture }
+            })
+          }
+        }
       }
+
+      if (user) {
+        token.id = user.id
+        token.username = user.username
+        token.verified = user.verified
+      }
+
       return token
     },
     async session({ session, token }) {
       if (session.user) {
-        session.user.id = token.sub!
-        session.user.username = token.username as string
-        session.user.name = token.name as string
-        session.user.email = token.email as string
-        session.user.image = token.picture as string
+        session.user.id = token.id
+        session.user.name = token.name
+        session.user.email = token.email
+        session.user.image = token.picture
+        session.user.username = token.username
+        session.user.verified = token.verified
       }
       return session
     }

@@ -18,10 +18,10 @@ import {
 import { MoreHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import MoveTakeDialog from './MoveTakeDialog'
-import { Take } from '@prisma/client'
+import { Take, Vote } from '@prisma/client'
 import { Community } from '@prisma/client'
-import { Vote } from '@prisma/client'
 import { User } from '@prisma/client'
+import { format } from "date-fns"
 
 interface SimpleCommunity {
   id: string;
@@ -49,12 +49,12 @@ interface SimpleCommunity {
   children?: SimpleCommunity[];
 }
 
-interface ExtendedTake extends Omit<Take, 'community' | 'votes' | 'createdAt' | 'updatedAt'> {
+export type ExtendedTake = Take & {
+  votes: (Vote & {
+    createdAt: string | Date
+    updatedAt: string | Date
+  })[]
   community: SimpleCommunity;
-  votes: Array<Omit<Vote, 'createdAt' | 'updatedAt'> & {
-    createdAt: string;
-    updatedAt: string;
-  }>;
   createdAt: string;
   updatedAt: string;
   author: {
