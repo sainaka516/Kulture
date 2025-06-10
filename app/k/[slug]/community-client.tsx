@@ -138,10 +138,10 @@ export default function CommunityClient({ community }: CommunityClientProps) {
   ) : (
     <div className="flex items-center gap-2">
       <Link 
-        href={`/k/${community.parent.slug}`}
+        href={`/k/${community.parent?.slug}`}
         className="text-muted-foreground hover:text-foreground transition-colors"
       >
-        {community.parent.name}
+        {community.parent?.name}
       </Link>
       <span className="text-muted-foreground">›</span>
       <span>{community.name}</span>
