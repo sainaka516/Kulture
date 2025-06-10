@@ -85,4 +85,6 @@ export function CommunityCard({ community }: CommunityCardProps) {
       </CardContent>
     </Card>
   )
-} 
+}
+
+export default CommunityCard; 
