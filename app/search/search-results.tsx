@@ -48,8 +48,12 @@ interface SearchResult {
       slug: string
     }
     votes: Array<{
+      id: string
       type: 'UP' | 'DOWN'
       userId: string
+      takeId: string
+      createdAt: Date
+      updatedAt: Date
     }>
     _count: {
       comments: number
