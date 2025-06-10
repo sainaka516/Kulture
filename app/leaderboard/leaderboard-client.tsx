@@ -17,6 +17,7 @@ interface LeaderboardUser {
   verifiedTakes: number
   multiVerifiedTakes: number
   maxVerificationsOnSingleTake: number
+  username: string
 }
 
 interface WorstTake {
@@ -127,7 +128,7 @@ export default function LeaderboardClient() {
                 <UserAvatar
                   user={{
                     image: user.image,
-                    username: user.name || '',
+                    username: user.username || '',
                     name: user.name || ''
                   }}
                   className="h-10 w-10"
