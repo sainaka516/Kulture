@@ -1,6 +1,8 @@
-declare const self: ServiceWorkerGlobalScope &
-  typeof globalThis &
-  { __WB_MANIFEST: Array<{ url: string; revision: string | null }> }
+/// <reference lib="webworker" />
+
+declare const self: ServiceWorkerGlobalScope & {
+  __WB_MANIFEST: Array<{ url: string; revision: string | null }>;
+};
 
 import { precacheAndRoute } from 'workbox-precaching';
 import { registerRoute } from 'workbox-routing';
