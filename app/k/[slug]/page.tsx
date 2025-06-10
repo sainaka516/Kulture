@@ -268,6 +268,7 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
   // Transform takes to include vote information
   const transformedTakes = takes.map(take => ({
     ...take,
+    createdAt: take.createdAt.toISOString(),
     _count: {
       ...take._count,
       upvotes: take.votes.filter(vote => vote.type === 'UP').length,
@@ -275,8 +276,12 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
     },
     currentUserId: session?.user?.id,
     userVote: session?.user?.id
-      ? take.votes.find(vote => vote.userId === session.user.id)?.type || null
-      : null
+      ? (take.votes.find(vote => vote.userId === session.user.id)?.type || null) as "UP" | "DOWN" | null
+      : null,
+    votes: take.votes.map(vote => ({
+      type: vote.type as "UP" | "DOWN",
+      userId: vote.userId
+    }))
   }))
 
   return <CommunityClient community={{ ...fullCommunity, takes: transformedTakes }} />
