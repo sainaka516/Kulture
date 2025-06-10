@@ -173,8 +173,8 @@ export async function GET(request: Request) {
           type: vote.type,
           userId: vote.userId,
           takeId: vote.takeId,
-          createdAt: vote.createdAt,
-          updatedAt: vote.updatedAt
+          createdAt: vote.createdAt.toISOString(),
+          updatedAt: vote.updatedAt.toISOString()
         })),
         _count: {
           ...take._count,

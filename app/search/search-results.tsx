@@ -52,8 +52,8 @@ interface SearchResult {
       type: 'UP' | 'DOWN'
       userId: string
       takeId: string
-      createdAt: Date
-      updatedAt: Date
+      createdAt: string
+      updatedAt: string
     }>
     _count: {
       comments: number
