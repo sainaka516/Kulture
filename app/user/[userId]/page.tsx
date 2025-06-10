@@ -4,6 +4,9 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import UserProfile from './user-profile'
+import { Suspense } from 'react'
+import { Loader2 } from 'lucide-react'
+import { transformTake } from '@/lib/utils'
 
 interface PageProps {
   params: {
@@ -42,9 +45,9 @@ export default async function UserPage({ params }: PageProps) {
             select: {
               id: true,
               name: true,
-              image: true,
               username: true,
-              verified: true
+              verified: true,
+              image: true
             }
           },
           community: {
@@ -62,35 +65,29 @@ export default async function UserPage({ params }: PageProps) {
                       id: true,
                       name: true,
                       slug: true,
-                      parent: {
-                        select: {
-                          id: true,
-                          name: true,
-                          slug: true,
-                          _count: {
-                            select: {
-                              members: true
-                            }
-                          }
-                        }
-                      },
                       _count: {
                         select: {
-                          members: true
+                          members: true,
+                          takes: true,
+                          children: true
                         }
                       }
                     }
                   },
                   _count: {
                     select: {
-                      members: true
+                      members: true,
+                      takes: true,
+                      children: true
                     }
                   }
                 }
               },
               _count: {
                 select: {
-                  members: true
+                  members: true,
+                  takes: true,
+                  children: true
                 }
               }
             }
@@ -98,13 +95,9 @@ export default async function UserPage({ params }: PageProps) {
           votes: true,
           _count: {
             select: {
-              comments: true,
-              votes: true
+              comments: true
             }
           }
-        },
-        orderBy: {
-          createdAt: 'desc'
         }
       },
       _count: {
@@ -136,52 +129,64 @@ export default async function UserPage({ params }: PageProps) {
     notFound()
   }
 
-  // Transform takes to include currentUserId and userVote
-  const transformedUser = {
-    ...user,
-    takes: user.takes.map(take => ({
-      ...take,
-      currentUserId: session?.user?.id,
-      userVote: session?.user?.id 
-        ? take.votes.find(vote => vote.userId === session.user.id)?.type || null
-        : null,
+  // Transform takes with proper vote counts
+  const transformedTakes = user.takes.map(take => {
+    // Calculate vote counts
+    const upvotes = take.votes.filter(vote => vote.type === 'UP').length
+    const downvotes = take.votes.filter(vote => vote.type === 'DOWN').length
+
+    return {
+      ...transformTake(take, session?.user?.id),
       _count: {
         ...take._count,
-        upvotes: take.votes.filter(vote => vote.type === 'UP').length,
-        downvotes: take.votes.filter(vote => vote.type === 'DOWN').length
+        upvotes,
+        downvotes,
       },
       community: {
-        ...take.community,
-        _count: {
-          ...take.community._count,
-          members: take.community._count?.members || 0
-        },
+        id: take.community.id,
+        name: take.community.name,
+        slug: take.community.slug,
         parent: take.community.parent ? {
-          ...take.community.parent,
-          parent: take.community.parent.parent ? {
-            ...take.community.parent.parent,
-            parent: take.community.parent.parent.parent ? {
-              ...take.community.parent.parent.parent,
-              _count: {
-                ...take.community.parent.parent.parent._count,
-                members: take.community.parent.parent.parent._count?.members || 0
-              }
-            } : null,
-            _count: {
-              ...take.community.parent.parent._count,
-              members: take.community.parent.parent._count?.members || 0
-            }
-          } : null,
+          id: take.community.parent.id,
+          name: take.community.parent.name,
+          slug: take.community.parent.slug,
           _count: {
-            ...take.community.parent._count,
-            members: take.community.parent._count?.members || 0
+            members: take.community.parent._count?.members || 0,
+            takes: take.community.parent._count?.takes || 0,
+            children: take.community.parent._count?.children || 0,
           }
-        } : null
+        } : null,
+        _count: {
+          members: take.community._count?.members || 0,
+          takes: take.community._count?.takes || 0,
+          children: take.community._count?.children || 0,
+        }
       }
-    }))
-  }
+    }
+  })
 
   const showEmail = session?.user?.id === user.id
 
-  return <UserProfile user={transformedUser} session={session} showEmail={showEmail} />
+  return (
+    <div className="container">
+      <Suspense fallback={
+        <div className="flex justify-center py-8">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      }>
+        <UserProfile
+          currentUser={{
+            id: user.id,
+            name: user.name,
+            username: user.username,
+            image: user.image,
+            verified: user.verified,
+            takes: transformedTakes
+          }}
+          session={session}
+          showEmail={showEmail}
+        />
+      </Suspense>
+    </div>
+  )
 } 

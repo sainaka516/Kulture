@@ -1,206 +1,101 @@
 'use client'
 
-import { useState } from 'react'
-import { useSearchParams, usePathname } from 'next/navigation'
-import Link from 'next/link'
-import SwipeableTakeFeed from './SwipeableTakeFeed'
-import TakeCard from '@/components/TakeCard'
-import { Take } from '@/lib/types'
-import { Loader2 } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { useToast } from '@/hooks/use-toast'
+import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
+import { useToast } from '@/hooks/use-toast'
+import { Loader2 } from 'lucide-react'
+import TakeCard from '@/components/TakeCard'
 import { useTakes } from '@/lib/contexts/TakesContext'
+import { Take, Vote } from '@/lib/types'
 
 interface TakeFeedProps {
-  communityId?: string
-  communitySlug: string | null
-  onTakeViewed?: (takeId: string) => void
-  defaultView?: 'list' | 'swipe'
-  showViewSwitcher?: boolean
+  takes: Take[]
+  currentKultureSlug?: string | null
 }
 
-export default function TakeFeed({
-  communityId,
-  communitySlug,
-  onTakeViewed,
-  defaultView = 'list',
-  showViewSwitcher = false,
-}: TakeFeedProps) {
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const view = searchParams.get('view') || defaultView
-  const { toast } = useToast()
+interface UpdatedTake extends Take {
+  votes: Vote[]
+}
+
+export default function TakeFeed({ takes, currentKultureSlug }: TakeFeedProps) {
   const { data: session } = useSession()
-  const { takes, updateTake } = useTakes()
+  const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
+  const { updateTake } = useTakes()
 
-  // Create URLs for each view
-  const createViewUrl = (viewType: string) => {
-    const params = new URLSearchParams(searchParams.toString())
-    params.set('view', viewType)
-    return `${pathname}?${params.toString()}`
-  }
-
-  // Handle take viewed
-  const handleTakeViewed = (takeId: string) => {
-    if (onTakeViewed) {
-      onTakeViewed(takeId)
-    }
-  }
-
-  // Shared vote handler
-  const handleVote = async (takeId: string, type: 'UP' | 'DOWN') => {
+  const handleVote = async (takeId: string, voteType: 'UP' | 'DOWN') => {
     if (!session) {
       toast({
         title: 'Sign in required',
-        description: 'You must be signed in to vote.',
+        description: 'You must be signed in to vote on takes.',
         variant: 'destructive',
       })
       return
     }
 
+    setIsLoading(true)
+
     try {
       const response = await fetch(`/api/takes/${takeId}/vote`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type,
-          communityId,
-        }),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ type: voteType }),
       })
 
       if (!response.ok) {
         throw new Error('Failed to vote')
       }
 
-      const updatedTake = await response.json()
-
-      // Validate the updated take has required data
-      if (!updatedTake.community) {
-        console.error('Updated take missing community data:', updatedTake)
-        toast({
-          title: 'Error',
-          description: 'Failed to update take. Please try again.',
-          variant: 'destructive',
-        })
-        return
-      }
+      const data = await response.json()
+      const updatedTake = data.take as UpdatedTake
 
       // Update the take in the context
-      updateTake({
+      const transformedTake = {
         ...updatedTake,
         _count: {
           ...updatedTake._count,
-          upvotes: updatedTake.votes.filter(v => v.type === 'UP').length,
-          downvotes: updatedTake.votes.filter(v => v.type === 'DOWN').length,
+          upvotes: updatedTake.votes.filter((vote: Vote) => vote.type === 'UP').length,
+          downvotes: updatedTake.votes.filter((vote: Vote) => vote.type === 'DOWN').length,
         },
-        userVote: updatedTake.votes.find(v => v.userId === session.user.id)?.type || null,
-      })
+        userVote: updatedTake.votes.find((vote: Vote) => vote.userId === session.user.id)?.type || null,
+      }
+
+      updateTake(transformedTake)
 
       // Only show success message if the vote was added or changed
-      const existingTake = takes.find(t => t.id === takeId)
-      const existingVote = existingTake?.votes.find(v => v.userId === session.user.id)?.type
-      const isRemovingVote = existingVote === type
+      const existingTake = takes.find((take: Take) => take.id === takeId)
+      const existingVote = existingTake?.votes.find((vote: Vote) => vote.userId === session.user.id)?.type
+      const isRemovingVote = existingVote === voteType
       if (!isRemovingVote) {
         toast({
           title: 'Success',
-          description: `You ${type === 'UP' ? 'agreed with' : 'disagreed with'} this take`,
+          description: `You ${voteType === 'UP' ? 'agreed with' : 'disagreed with'} this take`,
         })
       }
-
-      // Broadcast the vote update to other tabs/windows
-      const broadcastChannel = new BroadcastChannel('vote-updates')
-      broadcastChannel.postMessage({
-        takeId: updatedTake.id,
-        updatedTake: {
-          ...updatedTake,
-          _count: {
-            ...updatedTake._count,
-            upvotes: updatedTake.votes.filter(v => v.type === 'UP').length,
-            downvotes: updatedTake.votes.filter(v => v.type === 'DOWN').length,
-          },
-          userVote: updatedTake.votes.find(v => v.userId === session.user.id)?.type || null,
-        }
-      })
     } catch (error) {
-      console.error('Error voting:', error)
+      console.error('Failed to vote:', error)
       toast({
         title: 'Error',
-        description: 'Failed to vote. Please try again.',
+        description: 'Failed to vote on take.',
         variant: 'destructive',
       })
+    } finally {
+      setIsLoading(false)
     }
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex justify-center py-6">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    )
-  }
-
-  if (!takes.length) {
-    return (
-      <div className="text-center py-6">
-        <p className="text-muted-foreground">No takes available. Check back later!</p>
-      </div>
-    )
-  }
-
   return (
-    <div className="space-y-4">
-      {/* Show view switching buttons if enabled */}
-      {showViewSwitcher && (
-        <div className="flex justify-center gap-2 mb-6">
-          <Link
-            href={createViewUrl('swipe')}
-            className={cn(
-              "px-4 py-2 rounded-md font-medium transition-colors",
-              view === 'swipe'
-                ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                : "border border-input bg-background hover:bg-accent hover:text-accent-foreground"
-            )}
-          >
-            Swipe View
-          </Link>
-          <Link
-            href={createViewUrl('list')}
-            className={cn(
-              "px-4 py-2 rounded-md font-medium transition-colors",
-              view === 'list'
-                ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                : "border border-input bg-background hover:bg-accent hover:text-accent-foreground"
-            )}
-          >
-            List View
-          </Link>
-        </div>
-      )}
-
-      {view === 'swipe' ? (
-        <div className="takes-provider-wrapper">
-          <SwipeableTakeFeed
-            initialTakes={takes}
-            communityId={communityId}
-            communitySlug={communitySlug}
-            onTakeViewed={handleTakeViewed}
-            onVote={handleVote}
-          />
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {takes.map(take => (
-            <TakeCard
-              key={take.id}
-              take={take}
-              currentKultureSlug={communitySlug}
-              onVote={handleVote}
-            />
-          ))}
-        </div>
-      )}
+    <div className="grid gap-4">
+      {takes.map((take: Take) => (
+        <TakeCard
+          key={take.id}
+          take={take}
+          currentKultureSlug={currentKultureSlug}
+          onVote={handleVote}
+        />
+      ))}
     </div>
   )
 } 

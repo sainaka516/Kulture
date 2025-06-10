@@ -37,11 +37,6 @@ declare module 'next-auth' {
 
 declare module "next-auth/jwt" {
   interface JWT {
-    id: string
-    name: string | null
-    email: string | null
-    username: string
-    picture: string | null
     verified: boolean
   }
 }
@@ -143,11 +138,16 @@ export const authOptions: NextAuthOptions = {
           }
 
           return {
-            ...user,
-            name: user.name || undefined,
-            email: user.email || undefined,
+            id: user.id,
+            name: user.name || user.username,
+            email: user.email || `${user.username}@example.com`,
             image: user.image || undefined,
+            username: user.username,
             verified: true,
+            emailVerified: user.emailVerified,
+            password: user.password,
+            createdAt: user.createdAt,
+            updatedAt: user.updatedAt
           }
         } catch (error) {
           console.error('Error in authorize:', error)
@@ -232,7 +232,7 @@ export const authOptions: NextAuthOptions = {
           user.id = dbUser.id
           user.username = dbUser.username
           user.name = dbUser.name || dbUser.username
-          user.image = dbUser.image
+          user.image = dbUser.image || undefined
         }
 
         return true
@@ -244,10 +244,10 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user, profile }) {
       if (user) {
         token.id = user.id
-        token.name = user.name || null
-        token.email = user.email || null
+        token.name = user.name || undefined
+        token.email = user.email || undefined
         token.username = user.username
-        token.picture = user.image || null
+        token.picture = user.image || undefined
         token.verified = user.verified
       }
       return token

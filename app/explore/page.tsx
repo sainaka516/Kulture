@@ -1,9 +1,17 @@
+import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 import { Loader2 } from 'lucide-react'
 import prisma from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { transformTake } from '@/lib/utils'
 import ExploreClient from './explore-client'
+import { Vote } from '@prisma/client'
+
+interface ExtendedVote extends Vote {
+  createdAt: Date
+  updatedAt: Date
+}
 
 // Make sure data is always fresh
 export const dynamic = 'force-dynamic'
@@ -235,38 +243,43 @@ async function getTakes() {
     }))
     console.log('All takes:', allTakes.map(t => ({ id: t.id, title: t.title, authorId: t.authorId })))
 
-    const transformedTakes = allTakes.map(take => ({
-      ...take,
-      createdAt: take.createdAt.toISOString(),
-      updatedAt: take.updatedAt.toISOString(),
-      currentUserId: session.user.id,
-      userVote: (take.votes.find(vote => vote.userId === session.user.id)?.type || null) as "UP" | "DOWN" | null,
-      votes: take.votes.map(vote => ({
-        ...vote,
-        createdAt: vote.createdAt.toISOString(),
-        updatedAt: vote.updatedAt.toISOString(),
-      })),
-      community: {
-        id: take.community.id,
-        name: take.community.name,
-        slug: take.community.slug,
+    const transformedTakes = allTakes.map(take => {
+      // Calculate vote counts
+      const upvotes = take.votes.filter(vote => vote.type === 'UP').length
+      const downvotes = take.votes.filter(vote => vote.type === 'DOWN').length
+
+      // Type assertion for votes
+      const votes = take.votes as unknown as (Vote & {
+        createdAt: Date;
+        updatedAt: Date;
+      })[];
+
+      return {
+        ...transformTake(take, session?.user?.id),
         _count: {
-          takes: take.community._count?.takes || 0,
-          children: take.community._count?.children || 0,
-          members: take.community._count?.members || 0,
+          ...take._count,
+          upvotes,
+          downvotes,
         },
-        parent: take.community.parent ? {
-          id: take.community.parent.id,
-          name: take.community.parent.name,
-          slug: take.community.parent.slug,
-          _count: {
-            takes: take.community.parent._count?.takes || 0,
-            children: take.community.parent._count?.children || 0,
-            members: take.community.parent._count?.members || 0,
-          },
-        } : null,
-      },
-    }))
+        votes: votes.map(vote => ({
+          ...vote,
+          createdAt: vote.createdAt.toISOString(),
+          updatedAt: vote.updatedAt.toISOString(),
+        })),
+        community: {
+          ...take.community,
+          _count: take.community._count,
+          parent: take.community.parent ? {
+            ...take.community.parent,
+            _count: take.community.parent._count,
+            parent: take.community.parent.parent ? {
+              ...take.community.parent.parent,
+              _count: take.community.parent.parent._count,
+            } : null,
+          } : null,
+        },
+      }
+    })
 
     return transformedTakes
 
@@ -287,7 +300,7 @@ export default async function ExplorePage() {
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       }>
-        <ExploreClient initialTakes={takes} />
+        <ExploreClient takes={takes} />
       </Suspense>
     </div>
   )

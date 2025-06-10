@@ -15,6 +15,7 @@ import { Users, MessageSquare, Layers } from 'lucide-react'
 import MembersList from '@/components/MembersList'
 import { transformTake } from '@/lib/utils'
 import { TakesProvider } from '@/lib/contexts/TakesContext'
+import { Take } from '@/lib/types'
 
 interface CommunityClientProps {
   community: {
@@ -58,61 +59,7 @@ interface CommunityClientProps {
         children: number
       }
     }>
-    takes: Array<{
-      id: string
-      title: string
-      content: string | null
-      createdAt: string
-      author: {
-        id: string
-        name: string | null
-        username: string
-        image: string | null
-        verified: boolean
-      }
-      community: {
-        id: string
-        name: string
-        slug: string
-        parent?: {
-          id: string
-          name: string
-          slug: string
-          parent?: {
-            id: string
-            name: string
-            slug: string
-            _count?: {
-              members: number
-              takes: number
-              children: number
-            }
-          } | null
-          _count?: {
-            members: number
-            takes: number
-            children: number
-          }
-        } | null
-        _count?: {
-          members: number
-          takes: number
-          children: number
-        }
-      }
-      votes: Array<{
-        id: string
-        type: 'UP' | 'DOWN'
-        userId: string
-      }>
-      _count: {
-        comments: number
-        upvotes: number
-        downvotes: number
-      }
-      currentUserId?: string
-      userVote?: 'UP' | 'DOWN' | null
-    }>
+    takes: Take[]
     _count: {
       members: number
       takes: number
@@ -198,20 +145,19 @@ export default function CommunityClient({ community }: CommunityClientProps) {
       })
 
       if (!response.ok) {
-        throw new Error(`Failed to ${isMember ? 'leave' : 'join'} Kulture`)
+        throw new Error('Failed to join/leave community')
       }
 
       setIsMember(!isMember)
       toast({
         title: 'Success',
-        description: `You have ${isMember ? 'left' : 'joined'} the Kulture.`,
+        description: `You have ${isMember ? 'left' : 'joined'} ${community.name}`,
       })
-
-      router.refresh()
     } catch (error) {
+      console.error('Failed to join/leave:', error)
       toast({
         title: 'Error',
-        description: `Failed to ${isMember ? 'leave' : 'join'} Kulture. Please try again.`,
+        description: 'Failed to join/leave community.',
         variant: 'destructive',
       })
     } finally {
@@ -281,8 +227,8 @@ export default function CommunityClient({ community }: CommunityClientProps) {
 
   return (
     <TakesProvider initialTakes={transformedTakes}>
-      <div className="container max-w-6xl py-6">
-        <div className="mb-6">
+      <div className="container py-8">
+        <div className="flex flex-col gap-6">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold">{title}</h1>
@@ -290,118 +236,74 @@ export default function CommunityClient({ community }: CommunityClientProps) {
                 <p className="mt-2 text-muted-foreground">{community.description}</p>
               )}
             </div>
-            <div className="flex items-center gap-4">
-              <Button 
-                onClick={handleJoinOrLeave} 
-                disabled={isLoading}
-                variant={isMember ? "outline" : "default"}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {isMember ? 'Leaving...' : 'Joining...'}
-                  </>
-                ) : (
-                  isMember ? 'Leave Kulture' : 'Join Kulture'
-                )}
-              </Button>
-              <Link href={`/create-kulture?parent=${community.slug}`}>
-                <Button variant="outline">
-                  Create Associated Kulture
-                </Button>
-              </Link>
-              <Link href={`/submit?kulture=${community.id}`}>
-                <Button>Share Take</Button>
-              </Link>
-            </div>
-          </div>
-
-          {/* Community Stats */}
-          <div className="mt-6 flex items-center gap-6 text-sm text-muted-foreground">
-            <MembersList 
-              communityName={community.name}
-              memberCount={community._count.members}
-              slug={community.slug}
-            />
-            <div className="flex items-center gap-2">
-              <MessageSquare className="h-4 w-4" />
-              <span>{community._count.takes} takes</span>
-            </div>
-            {community._count.children > 0 && (
-              <div className="flex items-center gap-2">
-                <Layers className="h-4 w-4" />
-                <span>{community._count.children} associated kultures</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Main Content */}
-          <div className="lg:col-span-3">
-            <Suspense
-              fallback={
-                <div className="flex justify-center py-6">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
-              }
+            <Button
+              onClick={handleJoinOrLeave}
+              disabled={isLoading}
+              variant={isMember ? 'outline' : 'default'}
             >
-              <TakeFeed 
-                communityId={community.id}
-                communitySlug={community.slug}
-                showViewSwitcher
-              />
-            </Suspense>
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : isMember ? (
+                'Leave'
+              ) : (
+                'Join'
+              )}
+            </Button>
           </div>
 
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* About Section */}
-            <Card className="p-6">
-              <h2 className="font-semibold mb-4">About {community.name}</h2>
-              <dl className="space-y-4">
-                <div>
-                  <dt className="text-sm text-muted-foreground">Created by</dt>
-                  <dd className="font-medium">{community.owner.name}</dd>
-                </div>
-                <div>
-                  <dt className="text-sm text-muted-foreground">Members</dt>
-                  <dd className="font-medium">{community._count.members}</dd>
-                </div>
-                <div>
-                  <dt className="text-sm text-muted-foreground">Takes</dt>
-                  <dd className="font-medium">{community._count.takes}</dd>
-                </div>
-                {community._count.children > 0 && (
-                  <div>
-                    <dt className="text-sm text-muted-foreground">Associated Kultures</dt>
-                    <dd className="font-medium">{community._count.children}</dd>
-                  </div>
-                )}
-              </dl>
+          <div className="grid gap-6 md:grid-cols-3">
+            <Card className="p-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold">{community._count.members}</div>
+                <div className="text-sm text-muted-foreground">Members</div>
+              </div>
             </Card>
+            <Card className="p-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold">{community._count.takes}</div>
+                <div className="text-sm text-muted-foreground">Takes</div>
+              </div>
+            </Card>
+            <Card className="p-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold">{community._count.children}</div>
+                <div className="text-sm text-muted-foreground">Subkultures</div>
+              </div>
+            </Card>
+          </div>
 
-            {/* Associated Kultures */}
-            {community.children.length > 0 && (
-              <Card className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold">Associated Kultures</h2>
-                  <Link href={`/k/${community.slug}/associated`}>
-                    <Button variant="ghost" size="sm" className="text-sm">
-                      View All
-                    </Button>
-                  </Link>
+          <div className="grid gap-6 md:grid-cols-[2fr_1fr]">
+            <div>
+              <TakesProvider initialTakes={community.takes}>
+                <TakeFeed
+                  takes={community.takes}
+                  currentKultureSlug={community.slug}
+                />
+              </TakesProvider>
+            </div>
+            <div className="space-y-6">
+              {community.children.length > 0 && (
+                <div>
+                  <h2 className="mb-4 text-xl font-semibold">Subkultures</h2>
+                  <div className="grid gap-4">
+                    {community.children.map((child) => (
+                      <Card key={child.id} className="p-4">
+                        <h3 className="font-semibold">{child.name}</h3>
+                        {child.description && (
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            {child.description}
+                          </p>
+                        )}
+                        <div className="mt-2 flex items-center gap-4 text-sm text-muted-foreground">
+                          <div>{child._count.members} members</div>
+                          <div>{child._count.takes} takes</div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <KultureGrid kultures={community.children.slice(0, 3)} />
-                  {community.children.length > 3 && (
-                    <p className="text-sm text-muted-foreground text-center mt-4">
-                      And {community.children.length - 3} more associated kultures...
-                    </p>
-                  )}
-                </div>
-              </Card>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </div>
