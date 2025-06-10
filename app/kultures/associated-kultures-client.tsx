@@ -6,7 +6,7 @@ import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Community } from '@prisma/client'
-import KultureGrid from '@/components/KultureGrid'
+import KultureList from '@/components/KultureList'
 
 interface AssociatedKulturesClientProps {
   communities: Community[]
@@ -49,7 +49,7 @@ export default function AssociatedKulturesClient({ communities }: AssociatedKult
       </div>
 
       {filteredCommunities.length > 0 ? (
-        <KultureGrid communities={filteredCommunities} />
+        <KultureList communities={filteredCommunities} />
       ) : (
         <div className="text-center py-6">
           <p className="text-muted-foreground">
