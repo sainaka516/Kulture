@@ -267,8 +267,29 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
 
   // Transform takes to include vote information
   const transformedTakes = takes.map(take => ({
-    ...take,
+    id: take.id,
+    title: take.title,
+    content: take.content,
     createdAt: take.createdAt.toISOString(),
+    author: {
+      id: take.author.id,
+      name: take.author.name,
+      username: take.author.username,
+      image: take.author.image,
+      verified: take.author.verified
+    },
+    community: {
+      id: take.community.id,
+      name: take.community.name,
+      slug: take.community.slug,
+      parent: take.community.parent ? {
+        id: take.community.parent.id,
+        name: take.community.parent.name,
+        slug: take.community.parent.slug,
+        _count: take.community.parent._count
+      } : null,
+      _count: take.community._count
+    },
     _count: {
       ...take._count,
       upvotes: take.votes.filter(vote => vote.type === 'UP').length,
@@ -279,6 +300,7 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
       ? (take.votes.find(vote => vote.userId === session.user.id)?.type || null) as "UP" | "DOWN" | null
       : null,
     votes: take.votes.map(vote => ({
+      id: vote.id,
       type: vote.type as "UP" | "DOWN",
       userId: vote.userId
     }))
