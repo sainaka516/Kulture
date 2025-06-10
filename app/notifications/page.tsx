@@ -1,5 +1,6 @@
-'use client'
+export const dynamic = 'force-dynamic'
 
+import { Metadata } from 'next'
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { formatDistanceToNow } from 'date-fns'

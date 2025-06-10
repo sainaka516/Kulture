@@ -1,3 +1,6 @@
+export const dynamic = 'force-dynamic'
+
+import { Metadata } from 'next'
 'use client'
 
 import { useEffect, useState } from 'react'
