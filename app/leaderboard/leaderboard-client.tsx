@@ -125,8 +125,10 @@ export default function LeaderboardClient() {
                   )}
                 </div>
                 <UserAvatar
-                  name={user.name}
-                  image={user.image}
+                  user={{
+                    image: user.image,
+                    username: user.name || ''
+                  }}
                   className="h-10 w-10"
                 />
                 <div className="flex-1">
@@ -186,8 +188,10 @@ export default function LeaderboardClient() {
                     </span>
                   </div>
                   <UserAvatar
-                    name={take.author.name}
-                    image={take.author.image}
+                    user={{
+                      image: take.author.image,
+                      username: take.author.username
+                    }}
                     className="h-10 w-10"
                   />
                   <div className="flex-1">
