@@ -68,7 +68,17 @@ export default function AssociatedKulturesClient({ community }: AssociatedKultur
       </div>
 
       {filteredKultures.length > 0 ? (
-        <KultureGrid kultures={filteredKultures} />
+        <KultureGrid kultures={filteredKultures.map(kulture => ({
+          id: kulture.id,
+          name: kulture.name,
+          slug: kulture.slug,
+          description: kulture.description,
+          _count: {
+            members: kulture._count.members,
+            takes: kulture._count.takes,
+            children: kulture._count.children
+          }
+        }))} />
       ) : (
         <div className="text-center py-12">
           <p className="text-muted-foreground">

@@ -38,6 +38,9 @@ export default async function AssociatedKulturesPage({ params }: AssociatedKultu
               children: true,
             },
           },
+          members: true,
+          takes: true,
+          children: true,
         },
         orderBy: {
           name: 'asc',
