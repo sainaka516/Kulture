@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { formatDistanceToNow } from 'date-fns'
 import { Loader2, Users, MessageSquare } from 'lucide-react'
 import TakeCard from '@/components/TakeCard'
+import { transformTake } from '@/lib/utils'
 
 interface SearchResult {
   users: Array<{
@@ -203,9 +204,10 @@ export default function SearchResults() {
             <div>
               <h2 className="text-xl font-semibold mb-4">Takes</h2>
               <div className="grid gap-4">
-                {results.takes.map((take) => (
-                  <TakeCard key={take.id} take={take} currentKultureSlug={undefined} />
-                ))}
+                {results.takes.map((take) => {
+                  const transformedTake = transformTake(take, session?.user?.id)
+                  return <TakeCard key={transformedTake.id} take={transformedTake} currentKultureSlug={undefined} />
+                })}
               </div>
             </div>
           ) : null}
@@ -272,9 +274,10 @@ export default function SearchResults() {
         <TabsContent value="takes">
           {results?.takes.length ? (
             <div className="grid gap-4">
-              {results.takes.map((take) => (
-                <TakeCard key={take.id} take={take} currentKultureSlug={undefined} />
-              ))}
+              {results.takes.map((take) => {
+                const transformedTake = transformTake(take, session?.user?.id)
+                return <TakeCard key={transformedTake.id} take={transformedTake} currentKultureSlug={undefined} />
+              })}
             </div>
           ) : (
             <div className="text-center py-12">

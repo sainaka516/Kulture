@@ -12,6 +12,7 @@ import KultureGrid from '@/components/KultureGrid'
 import { Card } from '@/components/ui/card'
 import { Users, MessageSquare, Layers } from 'lucide-react'
 import MembersList from '@/components/MembersList'
+import { transformTake } from '@/lib/utils'
 
 interface CommunityClientProps {
   community: {
@@ -188,6 +189,41 @@ export default function CommunityClient({ community }: CommunityClientProps) {
     }
   }
 
+  const transformedTakes = community.takes.map(take => {
+    const transformedTake = transformTake(take, session?.user?.id)
+    return {
+      ...transformedTake,
+      updatedAt: transformedTake.createdAt,
+      communityId: community.id,
+      authorId: transformedTake.author.id,
+      votes: transformedTake.votes.map(vote => ({
+        ...vote,
+        createdAt: vote.createdAt.toISOString(),
+        updatedAt: vote.updatedAt.toISOString(),
+      })),
+      community: {
+        id: transformedTake.community.id,
+        name: transformedTake.community.name,
+        slug: transformedTake.community.slug,
+        _count: {
+          takes: transformedTake.community._count?.takes || 0,
+          children: transformedTake.community._count?.children || 0,
+          members: transformedTake.community._count?.members || 0,
+        },
+        parent: transformedTake.community.parent ? {
+          id: transformedTake.community.parent.id,
+          name: transformedTake.community.parent.name,
+          slug: transformedTake.community.parent.slug,
+          _count: {
+            takes: transformedTake.community.parent._count?.takes || 0,
+            children: transformedTake.community.parent._count?.children || 0,
+            members: transformedTake.community.parent._count?.members || 0,
+          },
+        } : null,
+      },
+    }
+  })
+
   return (
     <div className="container max-w-6xl py-6">
       <div className="mb-6">
@@ -255,7 +291,7 @@ export default function CommunityClient({ community }: CommunityClientProps) {
             }
           >
             <TakeFeed 
-              takes={community.takes} 
+              takes={transformedTakes} 
               communityId={community.id}
               communitySlug={community.slug}
               defaultView="swipe"

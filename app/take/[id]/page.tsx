@@ -7,6 +7,7 @@ import prisma from '@/lib/prisma'
 import { CommunityCard } from "@/components/CommunityCard"
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { transformTake } from '@/lib/utils'
 
 interface TakePageProps {
   params: {
@@ -59,19 +60,8 @@ export default async function TakePage({ params }: TakePageProps) {
     notFound()
   }
 
-  // Transform take to include currentUserId and userVote
-  const transformedTake = {
-    ...take,
-    currentUserId: session?.user?.id,
-    userVote: session?.user?.id 
-      ? take.votes.find(vote => vote.userId === session.user.id)?.type || null
-      : null,
-    _count: {
-      ...take._count,
-      upvotes: take.votes.filter(vote => vote.type === 'UP').length,
-      downvotes: take.votes.filter(vote => vote.type === 'DOWN').length
-    }
-  }
+  // Replace the manual transformation with the utility function
+  const transformedTake = transformTake(take, session?.user?.id)
 
   return (
     <div className="container flex flex-col items-center justify-between gap-6 py-8 md:flex-row md:items-start">
