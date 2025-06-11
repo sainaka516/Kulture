@@ -4,6 +4,7 @@ import prisma from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import ExploreClient from './explore-client'
+import { transformTake } from '@/lib/utils'
 
 // Make sure data is always fresh
 export const dynamic = 'force-dynamic'
@@ -200,75 +201,10 @@ async function getTakes() {
     console.log('Other takes:', otherTakes.map(t => ({ id: t.id, title: t.title, authorId: t.authorId })))
 
     // Combine and transform takes
-    const allTakes = [...friendsTakes, ...otherTakes].map(take => ({
-      ...take,
-      updatedAt: take.updatedAt || take.createdAt,
-      communityId: take.communityId || take.community.id,
-      authorId: take.authorId || take.author.id,
-      currentUserId: session.user.id,
-      userVote: (take.votes.find(vote => vote.userId === session.user.id)?.type || null) as "UP" | "DOWN" | null,
-      votes: take.votes.map(vote => ({
-        type: vote.type as 'UP' | 'DOWN',
-        userId: vote.userId
-      })),
-      _count: {
-        comments: take._count.comments,
-        upvotes: take.votes.filter(v => v.type === 'UP').length,
-        downvotes: take.votes.filter(v => v.type === 'DOWN').length
-      },
-      community: {
-        ...take.community,
-        _count: take.community._count || {
-          takes: 0,
-          children: 0,
-          members: 0,
-        },
-        parent: take.community.parent ? {
-          ...take.community.parent,
-          _count: take.community.parent._count || {
-            takes: 0,
-            children: 0,
-            members: 0,
-          },
-        } : null,
-      }
-    }))
+    const allTakes = [...friendsTakes, ...otherTakes].map(take => transformTake(take, session.user.id))
     console.log('All takes:', allTakes.map(t => ({ id: t.id, title: t.title, authorId: t.authorId })))
 
-    const transformedTakes = allTakes.map(take => ({
-      ...take,
-      createdAt: take.createdAt.toISOString(),
-      updatedAt: take.updatedAt.toISOString(),
-      currentUserId: session.user.id,
-      userVote: (take.votes.find(vote => vote.userId === session.user.id)?.type || null) as "UP" | "DOWN" | null,
-      votes: take.votes.map(vote => ({
-        ...vote,
-        createdAt: vote.createdAt.toISOString(),
-        updatedAt: vote.updatedAt.toISOString(),
-      })),
-      community: {
-        id: take.community.id,
-        name: take.community.name,
-        slug: take.community.slug,
-        _count: {
-          takes: take.community._count?.takes || 0,
-          children: take.community._count?.children || 0,
-          members: take.community._count?.members || 0,
-        },
-        parent: take.community.parent ? {
-          id: take.community.parent.id,
-          name: take.community.parent.name,
-          slug: take.community.parent.slug,
-          _count: {
-            takes: take.community.parent._count?.takes || 0,
-            children: take.community.parent._count?.children || 0,
-            members: take.community.parent._count?.members || 0,
-          },
-        } : null,
-      },
-    }))
-
-    return transformedTakes
+    return allTakes
 
   } catch (error) {
     console.error('Error fetching takes:', error)

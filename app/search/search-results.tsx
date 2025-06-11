@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { Card } from '@/components/ui/card'
@@ -10,6 +11,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { Loader2, Users, MessageSquare } from 'lucide-react'
 import TakeCard from '@/components/TakeCard'
 import { transformTake } from '@/lib/utils'
+import KultureGrid from '@/components/KultureGrid'
 
 interface SearchResult {
   users: Array<{
@@ -95,6 +97,7 @@ interface SearchResult {
 
 export default function SearchResults() {
   const searchParams = useSearchParams()
+  const { data: session } = useSession()
   const query = searchParams.get('q') || ''
   const [results, setResults] = useState<SearchResult | null>(null)
   const [isLoading, setIsLoading] = useState(false)

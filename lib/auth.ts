@@ -7,6 +7,7 @@ import bcrypt from 'bcryptjs'
 import * as z from 'zod'
 import { Profile } from 'next-auth'
 import { User as PrismaUser } from '@prisma/client'
+import { JWT } from 'next-auth/jwt'
 
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -37,12 +38,9 @@ declare module 'next-auth' {
 
 declare module "next-auth/jwt" {
   interface JWT {
-    id: string
-    name: string | null
-    email: string | null
-    username: string
-    picture: string | null
-    verified: boolean
+    username?: string
+    picture?: string | null
+    verified?: boolean
   }
 }
 
@@ -143,11 +141,16 @@ export const authOptions: NextAuthOptions = {
           }
 
           return {
-            ...user,
-            name: user.name || undefined,
-            email: user.email || undefined,
-            image: user.image || undefined,
+            id: user.id,
+            name: user.name || '',
+            email: user.email || '',
+            image: user.image || '',
+            username: user.username,
             verified: true,
+            emailVerified: user.emailVerified,
+            createdAt: user.createdAt,
+            updatedAt: user.updatedAt,
+            password: user.password
           }
         } catch (error) {
           console.error('Error in authorize:', error)
@@ -232,7 +235,7 @@ export const authOptions: NextAuthOptions = {
           user.id = dbUser.id
           user.username = dbUser.username
           user.name = dbUser.name || dbUser.username
-          user.image = dbUser.image
+          user.image = dbUser.image || undefined
         }
 
         return true
@@ -244,10 +247,10 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user, profile }) {
       if (user) {
         token.id = user.id
-        token.name = user.name || null
-        token.email = user.email || null
+        token.name = user.name || undefined
+        token.email = user.email || undefined
         token.username = user.username
-        token.picture = user.image || null
+        token.picture = user.image || undefined
         token.verified = user.verified
       }
       return token

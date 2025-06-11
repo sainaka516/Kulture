@@ -4,6 +4,7 @@ import prisma from '@/lib/prisma'
 import CommunityClient from './community-client'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { transformTake } from '@/lib/utils'
 
 // Get all descendant IDs using a recursive CTE query
 async function getAllDescendantIds(communityId: string): Promise<string[]> {
@@ -148,11 +149,28 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
       },
       parent: {
         select: {
+          id: true,
           name: true,
           slug: true,
+          parent: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              _count: {
+                select: {
+                  members: true,
+                  takes: true,
+                  children: true
+                }
+              }
+            }
+          },
           _count: {
             select: {
-              members: true
+              members: true,
+              takes: true,
+              children: true
             }
           }
         }
@@ -262,49 +280,11 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
 
   console.log('Takes found by Kulture:', takesByKulture)
 
-  // Get the current user's session
+  // Get the session for user ID
   const session = await getServerSession(authOptions)
 
-  // Transform takes to include vote information
-  const transformedTakes = takes.map(take => ({
-    id: take.id,
-    title: take.title,
-    content: take.content,
-    createdAt: take.createdAt.toISOString(),
-    author: {
-      id: take.author.id,
-      name: take.author.name,
-      username: take.author.username,
-      image: take.author.image,
-      verified: take.author.verified
-    },
-    community: {
-      id: take.community.id,
-      name: take.community.name,
-      slug: take.community.slug,
-      parent: take.community.parent ? {
-        id: take.community.parent.id,
-        name: take.community.parent.name,
-        slug: take.community.parent.slug,
-        _count: take.community.parent._count
-      } : null,
-      _count: take.community._count
-    },
-    _count: {
-      ...take._count,
-      upvotes: take.votes.filter(vote => vote.type === 'UP').length,
-      downvotes: take.votes.filter(vote => vote.type === 'DOWN').length,
-    },
-    currentUserId: session?.user?.id,
-    userVote: session?.user?.id
-      ? (take.votes.find(vote => vote.userId === session.user.id)?.type || null) as "UP" | "DOWN" | null
-      : null,
-    votes: take.votes.map(vote => ({
-      id: vote.id,
-      type: vote.type as "UP" | "DOWN",
-      userId: vote.userId
-    }))
-  }))
+  // Transform takes to include user vote and counts
+  const transformedTakes = takes.map(take => transformTake(take, session?.user?.id))
 
   return <CommunityClient community={{ ...fullCommunity, takes: transformedTakes }} />
 } 

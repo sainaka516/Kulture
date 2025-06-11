@@ -1,7 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useState, useEffect } from 'react'
-import { Take } from '@/lib/types'
+import { Take, Vote } from '@/lib/types'
 
 interface TakesContextType {
   takes: Take[]
@@ -41,8 +41,8 @@ export function TakesProvider({ children, initialTakes }: TakesProviderProps) {
             _count: {
               ...take._count,
               ...updatedTake._count,
-              upvotes: updatedTake.votes.filter(v => v.type === 'UP').length,
-              downvotes: updatedTake.votes.filter(v => v.type === 'DOWN').length,
+              upvotes: updatedTake.votes.filter((v: Vote) => v.type === 'UP').length,
+              downvotes: updatedTake.votes.filter((v: Vote) => v.type === 'DOWN').length,
             }
           } : take
         )

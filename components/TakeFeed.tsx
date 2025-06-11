@@ -5,7 +5,7 @@ import { useSearchParams, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import SwipeableTakeFeed from './SwipeableTakeFeed'
 import TakeCard from '@/components/TakeCard'
-import { Take } from '@/lib/types'
+import { Take, Vote } from '@/lib/types'
 import { Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
@@ -92,10 +92,10 @@ export default function TakeFeed({
         ...updatedTake,
         _count: {
           ...updatedTake._count,
-          upvotes: updatedTake.votes.filter(v => v.type === 'UP').length,
-          downvotes: updatedTake.votes.filter(v => v.type === 'DOWN').length,
+          upvotes: updatedTake.votes.filter((v: Vote) => v.type === 'UP').length,
+          downvotes: updatedTake.votes.filter((v: Vote) => v.type === 'DOWN').length,
         },
-        userVote: updatedTake.votes.find(v => v.userId === session.user.id)?.type || null,
+        userVote: updatedTake.votes.find((v: Vote) => v.userId === session.user.id)?.type || null,
       })
 
       // Only show success message if the vote was added or changed
@@ -117,10 +117,10 @@ export default function TakeFeed({
           ...updatedTake,
           _count: {
             ...updatedTake._count,
-            upvotes: updatedTake.votes.filter(v => v.type === 'UP').length,
-            downvotes: updatedTake.votes.filter(v => v.type === 'DOWN').length,
+            upvotes: updatedTake.votes.filter((v: Vote) => v.type === 'UP').length,
+            downvotes: updatedTake.votes.filter((v: Vote) => v.type === 'DOWN').length,
           },
-          userVote: updatedTake.votes.find(v => v.userId === session.user.id)?.type || null,
+          userVote: updatedTake.votes.find((v: Vote) => v.userId === session.user.id)?.type || null,
         }
       })
     } catch (error) {

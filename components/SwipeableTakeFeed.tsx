@@ -28,41 +28,22 @@ export default function SwipeableTakeFeed({
   const { data: session } = useSession()
   const { toast } = useToast()
   const { takes } = useTakes()
-  const [viewedTakes, setViewedTakes] = useState<Take[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [showNoMoreTakes, setShowNoMoreTakes] = useState(false)
 
-  const handleNext = useCallback(() => {
-    const currentTake = takes[currentIndex]
-    if (!currentTake) return
-
-    // Mark current take as viewed before moving to next
-    if (onTakeViewed) {
-      onTakeViewed(currentTake.id)
-    }
-
-    // If we're at the last take, show the no more takes message
-    if (currentIndex >= takes.length - 1) {
-      setShowNoMoreTakes(true)
-      return
-    }
-
-    // Otherwise, advance to the next take
-    setCurrentIndex(prevIndex => prevIndex + 1)
-    setShowNoMoreTakes(false)
-  }, [currentIndex, takes, onTakeViewed])
+  // Use initialTakes if provided, otherwise use takes from context
+  const currentTakes = initialTakes || takes
 
   const handlePrevious = useCallback(() => {
     if (!communitySlug) {
-      // In explore mode
-      if (viewedTakes.length > 0) {
-        const previousTake = viewedTakes[0]
-        setViewedTakes(prev => prev.slice(1))
-        setCurrentIndex(0)
+      // In explore mode, just decrement the index if possible
+      if (currentIndex > 0) {
+        setCurrentIndex(prevIndex => prevIndex - 1)
+        setShowNoMoreTakes(false)
       } else {
         toast({
-          title: 'No previous takes',
-          description: 'You\'re at the beginning of your feed!',
+          title: 'First take',
+          description: 'You\'re at the first take!',
         })
       }
     } else {
@@ -77,7 +58,34 @@ export default function SwipeableTakeFeed({
         })
       }
     }
-  }, [currentIndex, communitySlug, viewedTakes, toast])
+  }, [currentIndex, communitySlug, toast])
+
+  const handleNext = useCallback(() => {
+    const currentTake = currentTakes[currentIndex]
+    if (!currentTake) return
+
+    // Mark current take as viewed before moving to next
+    if (onTakeViewed) {
+      onTakeViewed(currentTake.id)
+    }
+
+    // If we're at the last take, show the no more takes message
+    if (currentIndex >= currentTakes.length - 1) {
+      setShowNoMoreTakes(true)
+      toast({
+        title: "End of Takes",
+        description: communitySlug 
+          ? "You've reached the end of takes in this kulture! Pull down to refresh or go back."
+          : "You've reached the end of takes! Pull down to refresh or go back to previous takes.",
+        duration: 3000, // Show for 3 seconds
+      })
+      return
+    }
+
+    // Otherwise, advance to the next take
+    setCurrentIndex(prevIndex => prevIndex + 1)
+    setShowNoMoreTakes(false)
+  }, [currentIndex, currentTakes, onTakeViewed, toast, communitySlug])
 
   const handleVote = useCallback(async (type: 'UP' | 'DOWN') => {
     if (!session) {
@@ -89,7 +97,7 @@ export default function SwipeableTakeFeed({
       return
     }
 
-    const currentTake = takes[currentIndex]
+    const currentTake = currentTakes[currentIndex]
     if (!currentTake || !onVote) {
       return
     }
@@ -104,19 +112,33 @@ export default function SwipeableTakeFeed({
         variant: 'destructive',
       })
     }
-  }, [currentIndex, takes, session, onVote, toast])
+  }, [currentIndex, currentTakes, session, onVote, toast])
 
   // Reset current index when takes change
   useEffect(() => {
     // Only reset if we're not at the last take
-    if (currentIndex >= takes.length) {
-      setCurrentIndex(takes.length - 1)
+    if (currentIndex >= currentTakes.length) {
+      setCurrentIndex(currentTakes.length - 1)
     }
     // Reset showNoMoreTakes when takes change
     setShowNoMoreTakes(false)
-  }, [takes, currentIndex])
+  }, [currentTakes, currentIndex])
 
-  if (!takes.length) {
+  // Add keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft' && currentIndex > 0) {
+        handlePrevious()
+      } else if (e.key === 'ArrowRight') {
+        handleNext()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [handleNext, handlePrevious, currentIndex])
+
+  if (!currentTakes.length) {
     return (
       <div className="text-center py-6">
         <p className="text-muted-foreground">No takes available. Check back later!</p>
@@ -124,9 +146,9 @@ export default function SwipeableTakeFeed({
     )
   }
 
-  const currentTake = takes[currentIndex]
-  const hasPrevious = !communitySlug ? viewedTakes.length > 0 : currentIndex > 0
-  const isLastTake = currentIndex === takes.length - 1
+  const currentTake = currentTakes[currentIndex]
+  const hasPrevious = !communitySlug ? currentIndex > 0 : true
+  const isLastTake = currentIndex === currentTakes.length - 1
 
   return (
     <div className="relative">

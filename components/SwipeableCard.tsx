@@ -40,6 +40,9 @@ export default function SwipeableCard({
   // Set window width after mount
   useEffect(() => {
     setWindowWidth(window.innerWidth)
+    const handleResize = () => setWindowWidth(window.innerWidth)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
   }, [])
 
   // Get user's current vote
@@ -127,14 +130,14 @@ export default function SwipeableCard({
 
       // If released with enough velocity or displacement, trigger navigation
       const displacement = Math.abs(mx)
-      const SWIPE_THRESHOLD = windowWidth * 0.075
-      const VELOCITY_THRESHOLD = 0.3
+      const SWIPE_THRESHOLD = windowWidth * 0.25 // Increased threshold
+      const VELOCITY_THRESHOLD = 0.5 // Increased threshold
 
       if (!active && (displacement > SWIPE_THRESHOLD || Math.abs(vx) > VELOCITY_THRESHOLD)) {
         const isSwipingLeft = mx < 0
         
         if (isSwipingLeft) {
-          // Swipe left - next take
+          // Swipe left - next take (always trigger onNext to show end message)
           api.start({
             x: -windowWidth,
             rotate: -30,
@@ -144,7 +147,7 @@ export default function SwipeableCard({
               api.start({ x: 0, rotate: 0, scale: 1 })
             },
           })
-        } else if (hasPrevious) {
+        } else if (!isSwipingLeft && hasPrevious) {
           // Swipe right - previous take (only if there's a previous take)
           api.start({
             x: windowWidth,
@@ -156,18 +159,31 @@ export default function SwipeableCard({
             },
           })
         } else {
-          // No previous take, bounce back
-          api.start({ x: 0, rotate: 0, scale: 1 })
+          // No previous take, bounce back with more resistance
+          api.start({
+            x: 0,
+            rotate: 0,
+            scale: 1,
+            config: { tension: 200, friction: 20 },
+          })
         }
       } else if (!active) {
         // If not triggering navigation, reset position
-        api.start({ x: 0, rotate: 0, scale: 1 })
+        api.start({
+          x: 0,
+          rotate: 0,
+          scale: 1,
+          config: { tension: 200, friction: 20 },
+        })
       }
     },
     {
       from: () => [x.get(), 0],
       filterTaps: true,
       rubberband: true,
+      bounds: { left: -windowWidth, right: windowWidth },
+      preventScroll: true,
+      preventDefault: true,
     }
   )
 
@@ -176,14 +192,14 @@ export default function SwipeableCard({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowLeft' && hasPrevious) {
         onPrevious()
-      } else if (e.key === 'ArrowRight') {
+      } else if (e.key === 'ArrowRight' && !isLastTake) {
         onNext()
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [onPrevious, onNext, hasPrevious])
+  }, [onPrevious, onNext, hasPrevious, isLastTake])
 
   return (
     <div className="relative">
