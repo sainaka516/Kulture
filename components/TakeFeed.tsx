@@ -15,17 +15,20 @@ import TakeCard from '@/components/TakeCard'
 interface TakeFeedProps {
   takes: Take[]
   currentKultureSlug?: string | null
+  defaultView?: 'swipe' | 'list'
+  showViewSwitcher?: boolean
 }
 
 interface UpdatedTake extends Take {
   votes: Vote[]
 }
 
-export default function TakeFeed({ takes, currentKultureSlug }: TakeFeedProps) {
+export default function TakeFeed({ takes, currentKultureSlug, defaultView = 'list', showViewSwitcher = false }: TakeFeedProps) {
   const { data: session } = useSession()
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
   const { updateTake } = useTakes()
+  const [view, setView] = useState<'swipe' | 'list'>(defaultView)
 
   const handleVote = async (takeId: string, voteType: 'UP' | 'DOWN') => {
     if (!session) {
@@ -104,15 +107,45 @@ export default function TakeFeed({ takes, currentKultureSlug }: TakeFeedProps) {
   }
 
   return (
-    <div className="grid gap-4">
-      {takes.map((take: Take) => (
-        <TakeCard
-          key={take.id}
-          take={take}
-          currentKultureSlug={currentKultureSlug}
-          onVote={handleVote}
-        />
-      ))}
+    <div className="space-y-4">
+      {showViewSwitcher && (
+        <div className="flex justify-end">
+          <div className="inline-flex rounded-lg border p-1">
+            <button
+              className={cn(
+                'inline-flex items-center justify-center rounded-md px-3 py-1.5 text-sm font-medium transition-all hover:bg-muted',
+                view === 'list' && 'bg-muted'
+              )}
+              onClick={() => setView('list')}
+            >
+              List
+            </button>
+            <button
+              className={cn(
+                'inline-flex items-center justify-center rounded-md px-3 py-1.5 text-sm font-medium transition-all hover:bg-muted',
+                view === 'swipe' && 'bg-muted'
+              )}
+              onClick={() => setView('swipe')}
+            >
+              Swipe
+            </button>
+          </div>
+        </div>
+      )}
+      {view === 'swipe' ? (
+        <SwipeableTakeFeed takes={takes} onVote={handleVote} />
+      ) : (
+        <div className="grid gap-4">
+          {takes.map((take: Take) => (
+            <TakeCard
+              key={take.id}
+              take={take}
+              currentKultureSlug={currentKultureSlug}
+              onVote={handleVote}
+            />
+          ))}
+        </div>
+      )}
     </div>
   )
 } 
