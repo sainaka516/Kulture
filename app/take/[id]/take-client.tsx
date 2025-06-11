@@ -6,6 +6,7 @@ import Comments from '@/components/Comments'
 import { CommunityCard } from "@/components/CommunityCard"
 import { useSession } from 'next-auth/react'
 import { transformTake } from '@/lib/utils'
+import { Take, Comment } from '@/lib/types'
 
 interface TakeClientProps {
   take: Take
