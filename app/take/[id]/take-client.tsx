@@ -3,8 +3,9 @@
 import { TakesProvider } from '@/lib/contexts/TakesContext'
 import TakeCard from '@/components/TakeCard'
 import Comments from '@/components/Comments'
-import { CommunityCard } from '@/components/CommunityCard'
-import { Take, Comment, Vote } from '@/lib/types'
+import { CommunityCard } from "@/components/CommunityCard"
+import { useSession } from 'next-auth/react'
+import { transformTake } from '@/lib/utils'
 
 interface TakeClientProps {
   take: Take
@@ -12,22 +13,14 @@ interface TakeClientProps {
 }
 
 export default function TakeClient({ take, comments }: TakeClientProps) {
-  // Ensure vote type is correct
-  const takeWithCorrectVoteType: Take = {
-    ...take,
-    votes: take.votes.map(vote => ({
-      ...vote,
-      type: vote.type as 'UP' | 'DOWN',
-      createdAt: vote.createdAt,
-      updatedAt: vote.updatedAt
-    }))
-  }
+  const { data: session } = useSession()
+  const transformedTake = transformTake(take, session?.user?.id)
 
   return (
-    <TakesProvider initialTakes={[takeWithCorrectVoteType]}>
+    <TakesProvider initialTakes={[transformedTake]}>
       <div className="container flex flex-col items-center justify-between gap-6 py-8 md:flex-row md:items-start">
         <div className="w-full md:w-3/4">
-          <TakeCard take={takeWithCorrectVoteType} currentKultureSlug={null} />
+          <TakeCard take={transformedTake} currentKultureSlug={null} />
           <div className="mt-6">
             <Comments takeId={take.id} initialComments={comments} />
           </div>

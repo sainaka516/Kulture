@@ -6,12 +6,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { transformTake } from '@/lib/utils'
 import ExploreClient from './explore-client'
-import { Vote } from '@prisma/client'
-
-interface ExtendedVote extends Vote {
-  createdAt: Date
-  updatedAt: Date
-}
+import { transformTake } from '@/lib/utils'
 
 // Make sure data is always fresh
 export const dynamic = 'force-dynamic'
@@ -208,80 +203,10 @@ async function getTakes() {
     console.log('Other takes:', otherTakes.map(t => ({ id: t.id, title: t.title, authorId: t.authorId })))
 
     // Combine and transform takes
-    const allTakes = [...friendsTakes, ...otherTakes].map(take => ({
-      ...take,
-      updatedAt: take.updatedAt || take.createdAt,
-      communityId: take.communityId || take.community.id,
-      authorId: take.authorId || take.author.id,
-      currentUserId: session.user.id,
-      userVote: (take.votes.find(vote => vote.userId === session.user.id)?.type || null) as "UP" | "DOWN" | null,
-      votes: take.votes.map(vote => ({
-        type: vote.type as 'UP' | 'DOWN',
-        userId: vote.userId
-      })),
-      _count: {
-        comments: take._count.comments,
-        upvotes: take.votes.filter(v => v.type === 'UP').length,
-        downvotes: take.votes.filter(v => v.type === 'DOWN').length
-      },
-      community: {
-        ...take.community,
-        _count: take.community._count || {
-          takes: 0,
-          children: 0,
-          members: 0,
-        },
-        parent: take.community.parent ? {
-          ...take.community.parent,
-          _count: take.community.parent._count || {
-            takes: 0,
-            children: 0,
-            members: 0,
-          },
-        } : null,
-      }
-    }))
+    const allTakes = [...friendsTakes, ...otherTakes].map(take => transformTake(take, session.user.id))
     console.log('All takes:', allTakes.map(t => ({ id: t.id, title: t.title, authorId: t.authorId })))
 
-    const transformedTakes = allTakes.map(take => {
-      // Calculate vote counts
-      const upvotes = take.votes.filter(vote => vote.type === 'UP').length
-      const downvotes = take.votes.filter(vote => vote.type === 'DOWN').length
-
-      // Type assertion for votes
-      const votes = take.votes as unknown as (Vote & {
-        createdAt: Date;
-        updatedAt: Date;
-      })[];
-
-      return {
-        ...transformTake(take, session?.user?.id),
-        _count: {
-          ...take._count,
-          upvotes,
-          downvotes,
-        },
-        votes: votes.map(vote => ({
-          ...vote,
-          createdAt: vote.createdAt.toISOString(),
-          updatedAt: vote.updatedAt.toISOString(),
-        })),
-        community: {
-          ...take.community,
-          _count: take.community._count,
-          parent: take.community.parent ? {
-            ...take.community.parent,
-            _count: take.community.parent._count,
-            parent: take.community.parent.parent ? {
-              ...take.community.parent.parent,
-              _count: take.community.parent.parent._count,
-            } : null,
-          } : null,
-        },
-      }
-    })
-
-    return transformedTakes
+    return allTakes
 
   } catch (error) {
     console.error('Error fetching takes:', error)

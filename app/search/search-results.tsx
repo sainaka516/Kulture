@@ -12,6 +12,7 @@ import { Loader2, Users, MessageSquare } from 'lucide-react'
 import TakeCard from '@/components/TakeCard'
 import KultureList from '@/components/KultureList'
 import { transformTake } from '@/lib/utils'
+import KultureGrid from '@/components/KultureGrid'
 
 interface SearchResult {
   users: Array<{

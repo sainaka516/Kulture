@@ -79,7 +79,24 @@ export default async function CommunityPage({ params }: PageProps) {
         }
       },
       parent: {
-        include: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          parent: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              _count: {
+                select: {
+                  members: true,
+                  takes: true,
+                  children: true
+                }
+              }
+            }
+          },
           _count: {
             select: {
               members: true,
@@ -195,83 +212,26 @@ export default async function CommunityPage({ params }: PageProps) {
     }
   })
 
-  // Get the current user's session
+  // Log the takes we found grouped by community
+  const takesByKulture = takes.reduce((acc, take) => {
+    const kultureName = take.community.name
+    if (!acc[kultureName]) {
+      acc[kultureName] = []
+    }
+    acc[kultureName].push({
+      id: take.id,
+      title: take.title
+    })
+    return acc
+  }, {} as Record<string, Array<{ id: string, title: string }>>)
+
+  console.log('Takes found by Kulture:', takesByKulture)
+
+  // Get the session for user ID
   const session = await getServerSession(authOptions)
 
-  // Transform the takes with proper vote counts
-  const transformedTakes = takes.map(take => {
-    // Calculate vote counts
-    const upvotes = take.votes.filter(vote => vote.type === 'UP').length
-    const downvotes = take.votes.filter(vote => vote.type === 'DOWN').length
-
-    return {
-      ...transformTake(take, session?.user?.id),
-      _count: {
-        ...take._count,
-        upvotes,
-        downvotes,
-      },
-      community: {
-        id: take.community.id,
-        name: take.community.name,
-        slug: take.community.slug,
-        parent: take.community.parent ? {
-          id: take.community.parent.id,
-          name: take.community.parent.name,
-          slug: take.community.parent.slug,
-          _count: {
-            members: take.community.parent._count?.members || 0,
-            takes: take.community.parent._count?.takes || 0,
-            children: take.community.parent._count?.children || 0,
-          }
-        } : null,
-        _count: {
-          members: take.community._count?.members || 0,
-          takes: take.community._count?.takes || 0,
-          children: take.community._count?.children || 0,
-        }
-      }
-    }
-  })
-
-  // Prepare the full community data
-  const fullCommunity = {
-    id: community.id,
-    name: community.name,
-    slug: community.slug,
-    description: community.description,
-    owner: {
-      id: community.owner.id,
-      name: community.owner.name,
-      image: community.owner.image
-    },
-    parent: community.parent ? {
-      id: community.parent.id,
-      name: community.parent.name,
-      slug: community.parent.slug,
-      _count: {
-        members: community.parent._count?.members || 0,
-        takes: community.parent._count?.takes || 0,
-        children: community.parent._count?.children || 0,
-      }
-    } : null,
-    children: community.children.map(c => ({
-      id: c.id,
-      name: c.name,
-      slug: c.slug,
-      description: c.description,
-      _count: {
-        members: c._count?.members || 0,
-        takes: c._count?.takes || 0,
-        children: c._count?.children || 0,
-      }
-    })),
-    _count: {
-      members: community._count?.members || 0,
-      takes: community._count?.takes || 0,
-      children: community._count?.children || 0,
-    }
-  }
+  // Transform takes to include user vote and counts
+  const transformedTakes = takes.map(take => transformTake(take, session?.user?.id))
 
   return <CommunityClient community={{ ...fullCommunity, takes: transformedTakes }} />
 } 

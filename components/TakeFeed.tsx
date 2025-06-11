@@ -1,6 +1,14 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import { useSearchParams, usePathname } from 'next/navigation'
+import Link from 'next/link'
+import SwipeableTakeFeed from './SwipeableTakeFeed'
+import TakeCard from '@/components/TakeCard'
+import { Take, Vote } from '@/lib/types'
+import { Loader2 } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { useToast } from '@/hooks/use-toast'
 import { useSession } from 'next-auth/react'
 import { useToast } from '@/hooks/use-toast'
 import { Loader2 } from 'lucide-react'
@@ -56,13 +64,11 @@ export default function TakeFeed({ takes, currentKultureSlug }: TakeFeedProps) {
         ...updatedTake,
         _count: {
           ...updatedTake._count,
-          upvotes: updatedTake.votes.filter((vote: Vote) => vote.type === 'UP').length,
-          downvotes: updatedTake.votes.filter((vote: Vote) => vote.type === 'DOWN').length,
+          upvotes: updatedTake.votes.filter((v: Vote) => v.type === 'UP').length,
+          downvotes: updatedTake.votes.filter((v: Vote) => v.type === 'DOWN').length,
         },
-        userVote: updatedTake.votes.find((vote: Vote) => vote.userId === session.user.id)?.type || null,
-      }
-
-      updateTake(transformedTake)
+        userVote: updatedTake.votes.find((v: Vote) => v.userId === session.user.id)?.type || null,
+      })
 
       // Only show success message if the vote was added or changed
       const existingTake = takes.find((take: Take) => take.id === takeId)
@@ -74,6 +80,21 @@ export default function TakeFeed({ takes, currentKultureSlug }: TakeFeedProps) {
           description: `You ${voteType === 'UP' ? 'agreed with' : 'disagreed with'} this take`,
         })
       }
+
+      // Broadcast the vote update to other tabs/windows
+      const broadcastChannel = new BroadcastChannel('vote-updates')
+      broadcastChannel.postMessage({
+        takeId: updatedTake.id,
+        updatedTake: {
+          ...updatedTake,
+          _count: {
+            ...updatedTake._count,
+            upvotes: updatedTake.votes.filter((v: Vote) => v.type === 'UP').length,
+            downvotes: updatedTake.votes.filter((v: Vote) => v.type === 'DOWN').length,
+          },
+          userVote: updatedTake.votes.find((v: Vote) => v.userId === session.user.id)?.type || null,
+        }
+      })
     } catch (error) {
       console.error('Failed to vote:', error)
       toast({

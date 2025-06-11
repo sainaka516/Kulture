@@ -7,6 +7,7 @@ import bcrypt from 'bcryptjs'
 import * as z from 'zod'
 import { Profile } from 'next-auth'
 import { User as PrismaUser } from '@prisma/client'
+import { JWT } from 'next-auth/jwt'
 
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -37,7 +38,9 @@ declare module 'next-auth' {
 
 declare module "next-auth/jwt" {
   interface JWT {
-    verified: boolean
+    username?: string
+    picture?: string | null
+    verified?: boolean
   }
 }
 
@@ -159,15 +162,15 @@ export const authOptions: NextAuthOptions = {
 
           return {
             id: user.id,
-            name: user.name || user.username,
-            email: user.email || `${user.username}@example.com`,
-            image: user.image || undefined,
+            name: user.name || '',
+            email: user.email || '',
+            image: user.image || '',
             username: user.username,
             verified: true,
             emailVerified: user.emailVerified,
-            password: user.password,
             createdAt: user.createdAt,
-            updatedAt: user.updatedAt
+            updatedAt: user.updatedAt,
+            password: user.password
           }
         } catch (error) {
           console.error('Error in authorize:', error)
