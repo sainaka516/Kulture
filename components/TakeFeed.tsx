@@ -133,7 +133,11 @@ export default function TakeFeed({ takes, currentKultureSlug, defaultView = 'lis
         </div>
       )}
       {view === 'swipe' ? (
-        <SwipeableTakeFeed takes={takes} onVote={handleVote} />
+        <SwipeableTakeFeed
+          initialTakes={takes}
+          communitySlug={currentKultureSlug}
+          onVote={handleVote}
+        />
       ) : (
         <div className="grid gap-4">
           {takes.map((take: Take) => (
