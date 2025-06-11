@@ -233,5 +233,5 @@ export default async function CommunityPage({ params }: PageProps) {
   // Transform takes to include user vote and counts
   const transformedTakes = takes.map(take => transformTake(take, session?.user?.id))
 
-  return <CommunityClient community={{ ...fullCommunity, takes: transformedTakes }} />
+  return <CommunityClient community={{ ...community, takes: transformedTakes }} />
 } 
