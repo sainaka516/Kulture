@@ -135,7 +135,7 @@ export default function TakeFeed({ takes, currentKultureSlug, defaultView = 'lis
       {view === 'swipe' ? (
         <SwipeableTakeFeed
           initialTakes={takes}
-          communitySlug={currentKultureSlug}
+          communitySlug={currentKultureSlug || null}
           onVote={handleVote}
         />
       ) : (
