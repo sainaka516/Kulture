@@ -3,18 +3,14 @@
 import { useState } from 'react'
 import { useSearchParams, usePathname } from 'next/navigation'
 import Link from 'next/link'
-import SwipeableTakeFeed from './SwipeableTakeFeed'
-import TakeCard from '@/components/TakeCard'
-import { Take, Vote } from '@/lib/types'
+import { useSession } from 'next-auth/react'
 import { Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
-import { useSession } from 'next-auth/react'
-import { useToast } from '@/hooks/use-toast'
-import { Loader2 } from 'lucide-react'
-import TakeCard from '@/components/TakeCard'
 import { useTakes } from '@/lib/contexts/TakesContext'
 import { Take, Vote } from '@/lib/types'
+import SwipeableTakeFeed from './SwipeableTakeFeed'
+import TakeCard from '@/components/TakeCard'
 
 interface TakeFeedProps {
   takes: Take[]
