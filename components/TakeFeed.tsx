@@ -68,7 +68,7 @@ export default function TakeFeed({ takes, currentKultureSlug }: TakeFeedProps) {
           downvotes: updatedTake.votes.filter((v: Vote) => v.type === 'DOWN').length,
         },
         userVote: updatedTake.votes.find((v: Vote) => v.userId === session.user.id)?.type || null,
-      })
+      };
 
       // Only show success message if the vote was added or changed
       const existingTake = takes.find((take: Take) => take.id === takeId)

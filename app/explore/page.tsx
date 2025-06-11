@@ -6,7 +6,6 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { transformTake } from '@/lib/utils'
 import ExploreClient from './explore-client'
-import { transformTake } from '@/lib/utils'
 
 // Make sure data is always fresh
 export const dynamic = 'force-dynamic'
