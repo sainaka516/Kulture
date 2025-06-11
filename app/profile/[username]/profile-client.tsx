@@ -73,7 +73,7 @@ export default function ProfileClient({ user }: ProfileClientProps) {
               <TabsContent value="takes" className="mt-6">
                 <TakesProvider initialTakes={user.takes}>
                   <TakeFeed
-                    communitySlug={null}
+                    currentKultureSlug={null}
                     defaultView="swipe"
                     showViewSwitcher={true}
                   />
