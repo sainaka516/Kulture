@@ -10,10 +10,16 @@ const publicPaths = [
   '/_next',
   '/images',
   '/favicon.ico',
+  '/manifest.json',
 ]
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
+
+  // Always allow authentication-related paths
+  if (pathname.startsWith('/api/auth')) {
+    return NextResponse.next()
+  }
 
   // Check if the path is public
   if (publicPaths.some(path => pathname.startsWith(path))) {
@@ -41,7 +47,10 @@ export async function middleware(request: NextRequest) {
   }
 
   // For all other routes, check authentication
-  const token = await getToken({ req: request })
+  const token = await getToken({ 
+    req: request,
+    secret: process.env.NEXTAUTH_SECRET
+  })
 
   // If not authenticated, redirect to sign-in page
   if (!token) {
@@ -61,7 +70,8 @@ export const config = {
      * 2. /_next/* (Next.js internals)
      * 3. /images/* (static files)
      * 4. /favicon.ico (favicon file)
+     * 5. /manifest.json (web manifest)
      */
-    '/((?!api/auth|_next|images|favicon.ico).*)',
+    '/((?!api/auth|_next|images|favicon.ico|manifest.json).*)',
   ],
 } 

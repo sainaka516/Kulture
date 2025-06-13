@@ -137,43 +137,60 @@ export const authOptions: NextAuthOptions = {
     CredentialsProvider({
       name: 'Credentials',
       credentials: {
-        username: { label: "Username", type: "text" },
+        username: { label: "Username or Email", type: "text" },
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials, req) {
         try {
           if (!credentials?.username || !credentials?.password) {
+            console.log('[AUTH] Missing credentials')
             return null
           }
 
+          const { username, password } = credentials
+          const isEmail = username.includes('@')
+          console.log('[AUTH] Attempting login with:', { username, isEmail })
+
+          // Try to find user by email or username
           const user = await prisma.user.findUnique({
-            where: { username: credentials.username },
+            where: isEmail 
+              ? { email: username.toLowerCase() }
+              : { username: username.toLowerCase() }
           })
 
-          if (!user || !user.password) {
+          if (!user) {
+            console.log('[AUTH] User not found:', { username, isEmail })
             return null
           }
 
-          const isValidPassword = await bcrypt.compare(credentials.password, user.password)
+          if (!user.password) {
+            console.log('[AUTH] User has no password (OAuth-only account):', { username, isEmail })
+            return null
+          }
+
+          const isValidPassword = await bcrypt.compare(password, user.password)
+          console.log('[AUTH] Password validation:', { username, isValid: isValidPassword })
 
           if (!isValidPassword) {
+            console.log('[AUTH] Invalid password for user:', { username, isEmail })
             return null
           }
 
+          console.log('[AUTH] Login successful:', { username, userId: user.id })
           return {
             id: user.id,
-            name: user.name || '',
+            name: user.name || user.username,
             email: user.email || '',
             image: user.image || '',
             username: user.username,
-            verified: true,
+            verified: user.verified || false,
             emailVerified: user.emailVerified,
             createdAt: user.createdAt,
             updatedAt: user.updatedAt,
             password: user.password
           }
         } catch (error) {
-          console.error('Error in authorize:', error)
+          console.error('[AUTH] Error in authorize:', error)
           return null
         }
       }

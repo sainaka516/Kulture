@@ -132,7 +132,14 @@ export async function POST(req: Request) {
       }
     })
   } catch (error) {
-    console.error('[SIGNUP] Error during signup:', error)
+    console.error('[SIGNUP] Error during signup:', {
+      error,
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      name: error instanceof Error ? error.name : 'Unknown',
+      databaseUrl: process.env.DATABASE_URL ? 'Set' : 'Not set',
+      nodeEnv: process.env.NODE_ENV
+    })
     
     if (error instanceof z.ZodError) {
       return new NextResponse(
@@ -144,10 +151,20 @@ export async function POST(req: Request) {
       )
     }
 
+    // Check for Prisma errors
+    if (error instanceof Error && error.message.includes('prisma')) {
+      console.error('[SIGNUP] Prisma error:', {
+        error: error.message,
+        code: (error as any).code,
+        meta: (error as any).meta
+      })
+    }
+
     return new NextResponse(
       JSON.stringify({ 
         error: 'Internal server error',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error',
+        type: error instanceof Error ? error.name : 'Unknown'
       }),
       { status: 500 }
     )
