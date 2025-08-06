@@ -237,12 +237,14 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
       createdAt: vote.createdAt.toISOString(),
       take: vote.take
     })),
-    recentComments: user.comments.map(comment => ({
-      id: comment.id,
-      content: comment.content,
-      createdAt: comment.createdAt.toISOString(),
-      take: comment.take
-    })),
+    recentComments: user.comments
+      .filter(comment => comment.take !== null)
+      .map(comment => ({
+        id: comment.id,
+        content: comment.content,
+        createdAt: comment.createdAt.toISOString(),
+        take: comment.take!
+      })),
     friends: [...user.friends.map(f => f.friend), ...user.friendsOf.map(f => f.user)],
     _count: {
       takes: user._count.takes,
