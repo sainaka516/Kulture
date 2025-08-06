@@ -6,6 +6,7 @@ import Navbar from '@/components/Navbar'
 import AuthProvider from '@/components/providers/auth-provider'
 import { ThemeProvider } from '@/components/providers/theme-provider'
 import { Toaster } from '@/components/ui/toaster'
+import DevSessionHelper from '@/components/DevSessionHelper'
 import { cn } from '@/lib/utils'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -51,6 +52,7 @@ export default function RootLayout({
               </div>
             </div>
             <Toaster />
+            <DevSessionHelper />
           </AuthProvider>
         </ThemeProvider>
       </body>

@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { PlusCircle, Layers, Trophy } from 'lucide-react'
+import { PlusCircle, Layers, Trophy, LogOut, UserSwitch } from 'lucide-react'
 import { useSession, signOut } from 'next-auth/react'
 import UserAuthStatus from '@/components/auth/UserAuthStatus'
 import { SearchBar } from '@/components/SearchBar'
@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { cn } from '@/lib/utils'
+import { forceSignOut, clearAllStorage } from '@/lib/session-utils'
 
 export default function Navbar() {
   const pathname = usePathname()
@@ -132,7 +133,19 @@ export default function Navbar() {
                     })
                   }}
                 >
+                  <LogOut className="mr-2 h-4 w-4" />
                   Sign out
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="cursor-pointer"
+                  onSelect={async (event) => {
+                    event.preventDefault()
+                    clearAllStorage()
+                    await forceSignOut()
+                  }}
+                >
+                  <UserSwitch className="mr-2 h-4 w-4" />
+                  Switch Account (Clear All)
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
