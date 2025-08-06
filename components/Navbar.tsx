@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { PlusCircle, Layers, Trophy, LogOut, UserSwitch } from 'lucide-react'
+import { PlusCircle, Layers, Trophy, LogOut, Users } from 'lucide-react'
 import { useSession, signOut } from 'next-auth/react'
 import UserAuthStatus from '@/components/auth/UserAuthStatus'
 import { SearchBar } from '@/components/SearchBar'
@@ -144,7 +144,7 @@ export default function Navbar() {
                     await forceSignOut()
                   }}
                 >
-                  <UserSwitch className="mr-2 h-4 w-4" />
+                  <Users className="mr-2 h-4 w-4" />
                   Switch Account (Clear All)
                 </DropdownMenuItem>
               </DropdownMenuContent>

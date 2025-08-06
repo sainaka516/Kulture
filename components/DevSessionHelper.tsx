@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { forceSignOut, clearAllStorage, getSessionInfo, isNewDevice } from '@/lib/session-utils'
-import { RefreshCw, Trash2, UserX } from 'lucide-react'
+import { RefreshCw, UserX } from 'lucide-react'
 
 export default function DevSessionHelper() {
   const { data: session, status } = useSession()
