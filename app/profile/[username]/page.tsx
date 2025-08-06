@@ -43,7 +43,14 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
     where: { username: params.username },
     include: {
       takes: {
-        include: {
+        select: {
+          id: true,
+          title: true,
+          content: true,
+          createdAt: true,
+          updatedAt: true,
+          authorId: true,
+          communityId: true,
           author: {
             select: {
               id: true,
@@ -81,7 +88,11 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
               comments: true
             }
           }
-        }
+        },
+        orderBy: {
+          createdAt: 'desc'
+        },
+        take: 20
       },
       communities: {
         select: {
@@ -102,12 +113,93 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
           }
         }
       },
-      votes: true,
+      votes: {
+        include: {
+          take: {
+            select: {
+              id: true,
+              title: true,
+              community: {
+                select: {
+                  name: true,
+                  slug: true
+                }
+              }
+            }
+          }
+        },
+        orderBy: {
+          createdAt: 'desc'
+        },
+        take: 10
+      },
+      comments: {
+        include: {
+          take: {
+            select: {
+              id: true,
+              title: true,
+              community: {
+                select: {
+                  name: true,
+                  slug: true
+                }
+              }
+            }
+          }
+        },
+        orderBy: {
+          createdAt: 'desc'
+        },
+        take: 10
+      },
+      friends: {
+        include: {
+          friend: {
+            select: {
+              id: true,
+              name: true,
+              username: true,
+              image: true
+            }
+          }
+        }
+      },
+      friendsOf: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              username: true,
+              image: true
+            }
+          }
+        }
+      },
+      ownedCommunities: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          description: true,
+          _count: {
+            select: {
+              members: true,
+              takes: true,
+              children: true
+            }
+          }
+        }
+      },
       _count: {
         select: {
           takes: true,
           comments: true,
-          votes: true
+          votes: true,
+          friends: true,
+          friendsOf: true,
+          ownedCommunities: true
         }
       }
     }
@@ -132,11 +224,33 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
       description: c.community.description,
       _count: c.community._count
     })),
+    ownedKultures: user.ownedCommunities.map(c => ({
+      id: c.id,
+      name: c.name,
+      slug: c.slug,
+      description: c.description,
+      _count: c._count
+    })),
+    recentVotes: user.votes.map(vote => ({
+      id: vote.id,
+      type: vote.type,
+      createdAt: vote.createdAt.toISOString(),
+      take: vote.take
+    })),
+    recentComments: user.comments.map(comment => ({
+      id: comment.id,
+      content: comment.content,
+      createdAt: comment.createdAt.toISOString(),
+      take: comment.take
+    })),
+    friends: [...user.friends.map(f => f.friend), ...user.friendsOf.map(f => f.user)],
     _count: {
       takes: user._count.takes,
       comments: user._count.comments,
       upvotes: user.votes.filter(v => v.type === 'UP').length,
-      downvotes: user.votes.filter(v => v.type === 'DOWN').length
+      downvotes: user.votes.filter(v => v.type === 'DOWN').length,
+      friends: user._count.friends + user._count.friendsOf,
+      ownedKultures: user._count.ownedCommunities
     },
     createdAt: user.createdAt.toISOString()
   }

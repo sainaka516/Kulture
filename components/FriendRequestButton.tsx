@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { UserPlus, Check, X, Loader2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
@@ -13,7 +13,30 @@ interface FriendRequestButtonProps {
 export default function FriendRequestButton({ userId, initialStatus = 'NONE' }: FriendRequestButtonProps) {
   const [status, setStatus] = useState(initialStatus)
   const [isLoading, setIsLoading] = useState(false)
+  const [isCheckingStatus, setIsCheckingStatus] = useState(true)
   const { toast } = useToast()
+
+  useEffect(() => {
+    const checkFriendshipStatus = async () => {
+      try {
+        const response = await fetch(`/api/friends/status/${userId}`)
+        if (response.ok) {
+          const data = await response.json()
+          setStatus(data.status)
+        }
+      } catch (error) {
+        console.error('Error checking friendship status:', error)
+      } finally {
+        setIsCheckingStatus(false)
+      }
+    }
+
+    if (initialStatus === 'NONE') {
+      checkFriendshipStatus()
+    } else {
+      setIsCheckingStatus(false)
+    }
+  }, [userId, initialStatus])
 
   const handleSendRequest = async () => {
     try {
@@ -43,6 +66,15 @@ export default function FriendRequestButton({ userId, initialStatus = 'NONE' }: 
     } finally {
       setIsLoading(false)
     }
+  }
+
+  if (isCheckingStatus) {
+    return (
+      <Button variant="secondary" disabled>
+        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+        Loading...
+      </Button>
+    )
   }
 
   if (status === 'FRIENDS') {

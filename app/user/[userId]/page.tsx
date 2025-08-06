@@ -100,28 +100,118 @@ export default async function UserPage({ params }: PageProps) {
               comments: true
             }
           }
+        },
+        orderBy: {
+          createdAt: 'desc'
+        },
+        take: 20
+      },
+      communities: {
+        select: {
+          community: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              description: true,
+              _count: {
+                select: {
+                  members: true,
+                  takes: true,
+                  children: true
+                }
+              }
+            }
+          }
+        }
+      },
+      votes: {
+        include: {
+          take: {
+            select: {
+              id: true,
+              title: true,
+              community: {
+                select: {
+                  name: true,
+                  slug: true
+                }
+              }
+            }
+          }
+        },
+        orderBy: {
+          createdAt: 'desc'
+        },
+        take: 10
+      },
+      comments: {
+        include: {
+          take: {
+            select: {
+              id: true,
+              title: true,
+              community: {
+                select: {
+                  name: true,
+                  slug: true
+                }
+              }
+            }
+          }
+        },
+        orderBy: {
+          createdAt: 'desc'
+        },
+        take: 10
+      },
+      friends: {
+        include: {
+          friend: {
+            select: {
+              id: true,
+              name: true,
+              username: true,
+              image: true
+            }
+          }
+        }
+      },
+      friendsOf: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              username: true,
+              image: true
+            }
+          }
+        }
+      },
+      ownedCommunities: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          description: true,
+          _count: {
+            select: {
+              members: true,
+              takes: true,
+              children: true
+            }
+          }
         }
       },
       _count: {
         select: {
           takes: true,
           comments: true,
-          communities: true,
-          friends: true
-        }
-      },
-      friends: {
-        select: {
-          friendId: true
-        }
-      },
-      receivedFriendRequests: {
-        where: {
-          status: 'PENDING'
-        },
-        select: {
-          senderId: true,
-          status: true
+          votes: true,
+          friends: true,
+          friendsOf: true,
+          ownedCommunities: true
         }
       }
     }
@@ -131,43 +221,51 @@ export default async function UserPage({ params }: PageProps) {
     notFound()
   }
 
-  // Transform takes with proper vote counts
-  const transformedTakes = user.takes.map(take => {
-    // Calculate vote counts
-    const upvotes = take.votes.filter(vote => vote.type === 'UP').length
-    const downvotes = take.votes.filter(vote => vote.type === 'DOWN').length
-
-    return {
-      ...transformTake(take, session?.user?.id),
-      _count: {
-        ...take._count,
-        upvotes,
-        downvotes,
-      },
-      community: {
-        id: take.community.id,
-        name: take.community.name,
-        slug: take.community.slug,
-        parent: take.community.parent ? {
-          id: take.community.parent.id,
-          name: take.community.parent.name,
-          slug: take.community.parent.slug,
-          _count: {
-            members: take.community.parent._count?.members || 0,
-            takes: take.community.parent._count?.takes || 0,
-            children: take.community.parent._count?.children || 0,
-          }
-        } : null,
-        _count: {
-          members: take.community._count?.members || 0,
-          takes: take.community._count?.takes || 0,
-          children: take.community._count?.children || 0,
-        }
-      }
-    }
-  })
-
-  const showEmail = session?.user?.id === user.id
+  // Transform user data to include upvotes and downvotes counts
+  const userData = {
+    id: user.id,
+    name: user.name,
+    username: user.username,
+    image: user.image,
+    verified: user.verified,
+    takes: user.takes.map(take => transformTake(take, session?.user?.id)),
+    joinedKultures: user.communities.map(c => ({
+      id: c.community.id,
+      name: c.community.name,
+      slug: c.community.slug,
+      description: c.community.description,
+      _count: c.community._count
+    })),
+    ownedKultures: user.ownedCommunities.map(c => ({
+      id: c.id,
+      name: c.name,
+      slug: c.slug,
+      description: c.description,
+      _count: c._count
+    })),
+    recentVotes: user.votes.map(vote => ({
+      id: vote.id,
+      type: vote.type,
+      createdAt: vote.createdAt.toISOString(),
+      take: vote.take
+    })),
+    recentComments: user.comments.map(comment => ({
+      id: comment.id,
+      content: comment.content,
+      createdAt: comment.createdAt.toISOString(),
+      take: comment.take
+    })),
+    friends: [...user.friends.map(f => f.friend), ...user.friendsOf.map(f => f.user)],
+    _count: {
+      takes: user._count.takes,
+      comments: user._count.comments,
+      upvotes: user.votes.filter(v => v.type === 'UP').length,
+      downvotes: user.votes.filter(v => v.type === 'DOWN').length,
+      friends: user._count.friends + user._count.friendsOf,
+      ownedKultures: user._count.ownedCommunities
+    },
+    createdAt: user.createdAt.toISOString()
+  }
 
   return (
     <div className="container">
@@ -177,16 +275,9 @@ export default async function UserPage({ params }: PageProps) {
         </div>
       }>
         <UserProfile
-          currentUser={{
-            id: user.id,
-            name: user.name,
-            username: user.username,
-            image: user.image,
-            verified: user.verified,
-            takes: transformedTakes
-          }}
+          currentUser={userData}
           session={session}
-          showEmail={showEmail}
+          showEmail={session?.user?.id === user.id}
         />
       </Suspense>
     </div>

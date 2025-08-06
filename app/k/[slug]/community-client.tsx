@@ -278,6 +278,8 @@ export default function CommunityClient({ community }: CommunityClientProps) {
                 <TakeFeed
                   takes={community.takes}
                   currentKultureSlug={community.slug}
+                  defaultView="swipe"
+                  showViewSwitcher={true}
                 />
               </TakesProvider>
             </div>
@@ -287,18 +289,20 @@ export default function CommunityClient({ community }: CommunityClientProps) {
                   <h2 className="mb-4 text-xl font-semibold">Subkultures</h2>
                   <div className="grid gap-4">
                     {community.children.map((child) => (
-                      <Card key={child.id} className="p-4">
-                        <h3 className="font-semibold">{child.name}</h3>
-                        {child.description && (
-                          <p className="mt-1 text-sm text-muted-foreground">
-                            {child.description}
-                          </p>
-                        )}
-                        <div className="mt-2 flex items-center gap-4 text-sm text-muted-foreground">
-                          <div>{child._count.members} members</div>
-                          <div>{child._count.takes} takes</div>
-                        </div>
-                      </Card>
+                      <Link key={child.id} href={`/k/${child.slug}`} className="block">
+                        <Card className="p-4 hover:bg-muted/50 transition-colors">
+                          <h3 className="font-semibold">{child.name}</h3>
+                          {child.description && (
+                            <p className="mt-1 text-sm text-muted-foreground">
+                              {child.description}
+                            </p>
+                          )}
+                          <div className="mt-2 flex items-center gap-4 text-sm text-muted-foreground">
+                            <div>{child._count.members} members</div>
+                            <div>{child._count.takes} takes</div>
+                          </div>
+                        </Card>
+                      </Link>
                     ))}
                   </div>
                 </div>

@@ -19,6 +19,8 @@ interface TakesProviderProps {
 
 export function TakesProvider({ children, initialTakes }: TakesProviderProps) {
   const [takes, setTakes] = useState<Take[]>(initialTakes)
+  
+  console.log('TakesProvider: Initialized with', initialTakes.length, 'takes')
 
   const getCurrentTake = (takeId: string) => {
     return takes.find(take => take.id === takeId)
@@ -81,7 +83,7 @@ export function TakesProvider({ children, initialTakes }: TakesProviderProps) {
   }, [initialTakes])
 
   const updateTake = (updatedTake: Take) => {
-    console.log('Updating take:', updatedTake)
+    console.log('TakesContext: Updating take:', updatedTake)
     setTakes(prev => {
       const newTakes = prev.map(take =>
         take.id === updatedTake.id ? {
@@ -97,7 +99,7 @@ export function TakesProvider({ children, initialTakes }: TakesProviderProps) {
           }
         } : take
       )
-      console.log('New takes state:', newTakes)
+      console.log('TakesContext: New takes state:', newTakes)
       return newTakes
     })
 

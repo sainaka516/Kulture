@@ -13,6 +13,7 @@ export function formatDate(date: Date | string) {
 export function transformTake(take: any, currentUserId?: string | null) {
   return {
     ...take,
+    authorId: take.authorId, // Explicitly preserve authorId
     votes: take.votes.map((vote: any) => ({
       ...vote,
       createdAt: vote.createdAt instanceof Date ? vote.createdAt.toISOString() : vote.createdAt,

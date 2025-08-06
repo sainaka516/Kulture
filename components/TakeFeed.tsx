@@ -17,18 +17,35 @@ interface TakeFeedProps {
   currentKultureSlug?: string | null
   defaultView?: 'swipe' | 'list'
   showViewSwitcher?: boolean
+  showDeleteButton?: boolean
+  onDelete?: (takeId: string) => void
+  onVote?: (takeId: string, voteType: 'UP' | 'DOWN') => Promise<void>
 }
 
 interface UpdatedTake extends Take {
   votes: Vote[]
 }
 
-export default function TakeFeed({ takes, currentKultureSlug, defaultView = 'list', showViewSwitcher = false }: TakeFeedProps) {
+export default function TakeFeed({ takes, currentKultureSlug, defaultView = 'list', showViewSwitcher = false, showDeleteButton = false, onDelete, onVote: externalOnVote }: TakeFeedProps) {
   const { data: session } = useSession()
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
-  const { updateTake } = useTakes()
+  const { updateTake, takes: contextTakes } = useTakes()
   const [view, setView] = useState<'swipe' | 'list'>(defaultView)
+
+  // Force using context takes if available, otherwise fall back to props
+  const currentTakes = contextTakes.length > 0 ? contextTakes : takes
+  
+  // Debug logging
+  console.log('TakeFeed Debug:', {
+    contextTakesLength: contextTakes.length,
+    propsTakesLength: takes.length,
+    currentTakesLength: currentTakes.length,
+    usingContext: contextTakes.length > 0,
+    contextTakes: contextTakes.map(t => ({ id: t.id, votes: t.votes?.length || 0, userVote: t.userVote }))
+  })
+
+
 
   const handleVote = async (takeId: string, voteType: 'UP' | 'DOWN') => {
     if (!session) {
@@ -43,6 +60,13 @@ export default function TakeFeed({ takes, currentKultureSlug, defaultView = 'lis
     setIsLoading(true)
 
     try {
+      // If external vote handler is provided, use it
+      if (externalOnVote) {
+        await externalOnVote(takeId, voteType)
+        return
+      }
+
+      // Otherwise, use the default voting logic
       const response = await fetch(`/api/takes/${takeId}/vote`, {
         method: 'POST',
         headers: {
@@ -55,22 +79,26 @@ export default function TakeFeed({ takes, currentKultureSlug, defaultView = 'lis
         throw new Error('Failed to vote')
       }
 
-      const data = await response.json()
-      const updatedTake = data.take as UpdatedTake
+      const updatedTake = await response.json() as UpdatedTake
 
       // Update the take in the context
       const transformedTake = {
         ...updatedTake,
         _count: {
-          ...updatedTake._count,
+          ...updatedTake._count || {},
           upvotes: updatedTake.votes.filter((v: Vote) => v.type === 'UP').length,
           downvotes: updatedTake.votes.filter((v: Vote) => v.type === 'DOWN').length,
         },
         userVote: updatedTake.votes.find((v: Vote) => v.userId === session.user.id)?.type || null,
       };
 
+      // Update the take in context if updateTake function exists
+      if (updateTake) {
+        updateTake(transformedTake);
+      }
+
       // Only show success message if the vote was added or changed
-      const existingTake = takes.find((take: Take) => take.id === takeId)
+      const existingTake = currentTakes.find((take: Take) => take.id === takeId)
       const existingVote = existingTake?.votes.find((vote: Vote) => vote.userId === session.user.id)?.type
       const isRemovingVote = existingVote === voteType
       if (!isRemovingVote) {
@@ -87,7 +115,7 @@ export default function TakeFeed({ takes, currentKultureSlug, defaultView = 'lis
         updatedTake: {
           ...updatedTake,
           _count: {
-            ...updatedTake._count,
+            ...updatedTake._count || {},
             upvotes: updatedTake.votes.filter((v: Vote) => v.type === 'UP').length,
             downvotes: updatedTake.votes.filter((v: Vote) => v.type === 'DOWN').length,
           },
@@ -134,18 +162,23 @@ export default function TakeFeed({ takes, currentKultureSlug, defaultView = 'lis
       )}
       {view === 'swipe' ? (
         <SwipeableTakeFeed
-          initialTakes={takes}
+          initialTakes={currentTakes}
+          takes={currentTakes}
           communitySlug={currentKultureSlug || null}
           onVote={handleVote}
+          showDeleteButton={showDeleteButton}
+          onDelete={onDelete}
         />
       ) : (
         <div className="grid gap-4">
-          {takes.map((take: Take) => (
+          {currentTakes.map((take: Take) => (
             <TakeCard
               key={take.id}
               take={take}
               currentKultureSlug={currentKultureSlug}
               onVote={handleVote}
+              showDeleteButton={showDeleteButton}
+              onDelete={onDelete}
             />
           ))}
         </div>

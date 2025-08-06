@@ -2,17 +2,25 @@
 
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
+import { useToast } from '@/hooks/use-toast'
 import { animated as a, useSpring } from '@react-spring/web'
 import { useDrag } from '@use-gesture/react'
 import { Take } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { Button } from './ui/button'
 import { Card } from './ui/card'
-import { ThumbsUp, ThumbsDown, MessageSquare, CheckCircle2 } from 'lucide-react'
+import { ThumbsUp, ThumbsDown, MessageSquare, CheckCircle2, MoreHorizontal, ChevronLeft, ChevronRight } from 'lucide-react'
 import { formatTimeAgo } from '@/lib/date'
 import Link from 'next/link'
 import { UserAvatar } from './ui/user-avatar'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 interface SwipeableCardProps {
   take: Take
@@ -22,6 +30,8 @@ interface SwipeableCardProps {
   onPrevious: () => void
   hasPrevious: boolean
   isLastTake: boolean
+  showDeleteButton?: boolean
+  onDelete?: (takeId: string) => void
 }
 
 export default function SwipeableCard({
@@ -32,8 +42,11 @@ export default function SwipeableCard({
   onPrevious,
   hasPrevious,
   isLastTake,
+  showDeleteButton = false,
+  onDelete,
 }: SwipeableCardProps) {
   const { data: session } = useSession()
+  const { toast } = useToast()
   const [isDragging, setIsDragging] = useState(false)
   const [windowWidth, setWindowWidth] = useState(0)
 
@@ -187,6 +200,49 @@ export default function SwipeableCard({
     }
   )
 
+  // Handle delete
+  const handleDelete = async () => {
+    if (!session) {
+      toast({
+        title: 'Sign in required',
+        description: 'You must be signed in to delete takes.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    if (!window.confirm('Are you sure you want to delete this take? This action cannot be undone.')) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/takes/${take.id}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to delete take')
+      }
+
+      toast({
+        title: 'Success',
+        description: 'Your take has been deleted.',
+      })
+
+      // Call the onDelete callback if provided
+      if (onDelete) {
+        onDelete(take.id)
+      }
+    } catch (error) {
+      console.error('Error deleting take:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to delete take. Please try again.',
+        variant: 'destructive',
+      })
+    }
+  }
+
   // Add keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -203,6 +259,50 @@ export default function SwipeableCard({
 
   return (
     <div className="relative">
+      {/* Left grab handle */}
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-2 z-10">
+              <div className={cn(
+                "w-8 h-16 bg-gradient-to-r from-transparent to-muted/20 rounded-l-lg flex items-center justify-center transition-all duration-200 cursor-pointer",
+                isDragging && "bg-gradient-to-r from-transparent to-muted/40"
+              )}>
+                <ChevronLeft className={cn(
+                  "h-4 w-4 text-muted-foreground/50 transition-all duration-200",
+                  isDragging && "h-5 w-5 text-muted-foreground/70"
+                )} />
+              </div>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            <p>Drag left to go back</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+
+      {/* Right grab handle */}
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-2 z-10">
+              <div className={cn(
+                "w-8 h-16 bg-gradient-to-l from-transparent to-muted/20 rounded-r-lg flex items-center justify-center transition-all duration-200 cursor-pointer",
+                isDragging && "bg-gradient-to-l from-transparent to-muted/40"
+              )}>
+                <ChevronRight className={cn(
+                  "h-4 w-4 text-muted-foreground/50 transition-all duration-200",
+                  isDragging && "h-5 w-5 text-muted-foreground/70"
+                )} />
+              </div>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            <p>Drag right for next</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+
       <a.div
         {...bindDrag()}
         style={{
@@ -220,38 +320,74 @@ export default function SwipeableCard({
         )}>
           <div className="p-6 space-y-6">
             {/* Author info */}
-            <div className="flex items-center gap-3">
-              <UserAvatar
-                user={take.author}
-                className="h-10 w-10"
-              />
-              <div>
-                <div className="flex items-center gap-1">
-                  <span className="font-medium">{take.author.name || take.author.username}</span>
-                  {take.author.verified && (
-                    <CheckCircle2 className="h-4 w-4 text-blue-500" />
-                  )}
-                </div>
-                <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                  <span>{formatTimeAgo(new Date(take.createdAt))}</span>
-                  <span>·</span>
-                  <Link
-                    href={`/k/${take.community.slug}`}
-                    className="hover:underline"
-                    data-community-link
-                  >
-                    {take.community.parent ? (
-                      <>
-                        <span>{take.community.parent.name}</span>
-                        <span className="mx-1">{'>'}</span>
-                        <span>{take.community.name}</span>
-                      </>
-                    ) : (
-                      take.community.name
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Link href={`/user/${take.author.id}`} className="hover:opacity-80 transition-opacity">
+                  <UserAvatar
+                    user={take.author}
+                    className="h-10 w-10"
+                  />
+                </Link>
+                <div>
+                  <div className="flex items-center gap-1">
+                    <Link 
+                      href={`/user/${take.author.id}`}
+                      className="font-medium hover:text-purple-600 transition-colors"
+                    >
+                      {take.author.name || take.author.username}
+                    </Link>
+                    {take.author.verified && (
+                      <CheckCircle2 className="h-4 w-4 text-blue-500" />
                     )}
-                  </Link>
+                  </div>
+                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                    <Link 
+                      href={`/user/${take.author.id}`}
+                      className="hover:text-foreground transition-colors"
+                    >
+                      @{take.author.username}
+                    </Link>
+                    <span>·</span>
+                    <span>{formatTimeAgo(new Date(take.createdAt))}</span>
+                    <span>·</span>
+                    <Link
+                      href={`/k/${take.community.slug}`}
+                      className="hover:underline"
+                      data-community-link
+                    >
+                      {take.community.parent ? (
+                        <>
+                          <span>{take.community.parent.name}</span>
+                          <span className="mx-1">{'>'}</span>
+                          <span>{take.community.name}</span>
+                        </>
+                      ) : (
+                        take.community.name
+                      )}
+                    </Link>
+                  </div>
                 </div>
               </div>
+              
+              {/* Dropdown menu for take actions */}
+              {showDeleteButton && take.authorId === session?.user?.id && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm">
+                      <MoreHorizontal className="h-4 w-4" />
+                      <span className="sr-only">More options</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem 
+                      className="text-destructive"
+                      onSelect={handleDelete}
+                    >
+                      Delete Take
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
 
             {/* Take content */}

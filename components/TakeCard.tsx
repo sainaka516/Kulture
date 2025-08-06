@@ -122,14 +122,18 @@ interface TakeCardProps {
   showCommunity?: boolean;
   currentKultureSlug?: string | null;
   onViewed?: () => void;
+  showDeleteButton?: boolean;
+  onDelete?: (takeId: string) => void;
 }
 
-export default function TakeCard({ take: initialTake, currentKultureSlug, onVote: propOnVote }: TakeCardProps) {
+export default function TakeCard({ take: initialTake, currentKultureSlug, onVote: propOnVote, showDeleteButton = false, onDelete }: TakeCardProps) {
   const { data: session } = useSession()
   const { toast } = useToast()
   const { updateTake } = useTakes()
   const [take, setTake] = useState(initialTake)
-  const isAuthor = take.author.id === take.authorId
+  const isAuthor = session?.user?.id === take.authorId
+  
+
 
   // Update local state when initialTake changes
   useEffect(() => {
@@ -174,8 +178,8 @@ export default function TakeCard({ take: initialTake, currentKultureSlug, onVote
         votes: updatedTake.votes,
         userVote: updatedTake.userVote,
         _count: {
-          ...take._count,
-          ...updatedTake._count,
+          ...take._count || {},
+          ...updatedTake._count || {},
           upvotes: updatedTake.votes.filter((v: Vote) => v.type === 'UP').length,
           downvotes: updatedTake.votes.filter((v: Vote) => v.type === 'DOWN').length,
         },
@@ -202,8 +206,51 @@ export default function TakeCard({ take: initialTake, currentKultureSlug, onVote
     }
   }
 
+  // Handle delete
+  const handleDelete = async () => {
+    if (!session) {
+      toast({
+        title: 'Sign in required',
+        description: 'You must be signed in to delete takes.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    if (!window.confirm('Are you sure you want to delete this take? This action cannot be undone.')) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/takes/${take.id}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to delete take')
+      }
+
+      toast({
+        title: 'Success',
+        description: 'Your take has been deleted.',
+      })
+
+      // Call the onDelete callback if provided
+      if (onDelete) {
+        onDelete(take.id)
+      }
+    } catch (error) {
+      console.error('Error deleting take:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to delete take. Please try again.',
+        variant: 'destructive',
+      })
+    }
+  }
+
   // Calculate upvote count for verification
-  const upvoteCount = take._count.upvotes
+  const upvoteCount = take._count?.upvotes || 0
 
   // Calculate member counts for verification
   const currentMemberCount = take.community._count?.members || 0
@@ -295,16 +342,28 @@ export default function TakeCard({ take: initialTake, currentKultureSlug, onVote
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
-                <UserAvatar user={take.author} />
+                <Link href={`/user/${take.author.id}`} className="hover:opacity-80 transition-opacity">
+                  <UserAvatar user={take.author} />
+                </Link>
                 <div>
                   <div className="flex items-center space-x-2">
-                    <span className="text-sm font-medium">{take.author.name}</span>
+                    <Link 
+                      href={`/user/${take.author.id}`}
+                      className="text-sm font-medium hover:text-purple-600 transition-colors"
+                    >
+                      {take.author.name}
+                    </Link>
                     {take.author.verified && (
                       <CheckCircle2 className="h-4 w-4 text-blue-500" />
                     )}
                   </div>
                   <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                    <span>@{take.author.username}</span>
+                    <Link 
+                      href={`/user/${take.author.id}`}
+                      className="hover:text-foreground transition-colors"
+                    >
+                      @{take.author.username}
+                    </Link>
                     <span>·</span>
                     <span>{formatDistanceToNow(new Date(take.createdAt))} ago</span>
                     <span>·</span>
@@ -337,10 +396,17 @@ export default function TakeCard({ take: initialTake, currentKultureSlug, onVote
                       </DropdownMenuItem>
                     }
                   />
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-destructive">
-                    Delete Take
-                  </DropdownMenuItem>
+                  {showDeleteButton && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem 
+                        className="text-destructive"
+                        onSelect={handleDelete}
+                      >
+                        Delete Take
+                      </DropdownMenuItem>
+                    </>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             )}

@@ -27,6 +27,8 @@ export default function SubmitPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [communities, setCommunities] = useState<any[]>([])
   const [selectedCommunityId, setSelectedCommunityId] = useState<string | null>(selectedKultureId)
+  const [title, setTitle] = useState('')
+  const [content, setContent] = useState('')
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -35,9 +37,11 @@ export default function SubmitPage() {
   }, [status, router])
 
   const fetchCommunities = useCallback(() => {
+    console.log('Fetching communities...')
     fetch('/api/communities')
       .then((response) => response.json())
       .then((data) => {
+        console.log('Communities loaded:', data)
         setCommunities(data)
       })
       .catch((error) => {
@@ -49,15 +53,39 @@ export default function SubmitPage() {
     fetchCommunities()
   }, [fetchCommunities])
 
+  // Reset form when component mounts
+  useEffect(() => {
+    // Reset form state when component mounts
+    setTitle('')
+    setContent('')
+    setIsLoading(false)
+  }, [])
+
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+    console.log('Form submitted!')
+    console.log('Event:', event)
+    console.log('Current form state:', { title, content, selectedCommunityId })
     event.preventDefault()
     setIsLoading(true)
 
-    const formData = new FormData(event.currentTarget)
-    const title = formData.get('title') as string
-    const content = formData.get('content') as string
-    const communityId = formData.get('communityId') as string
+    // Use state values instead of form data
+    const communityId = selectedCommunityId
 
+    console.log('Form data:', { title, content, communityId })
+
+    // Validate required fields
+    if (!title || !content || !communityId) {
+      console.log('Missing required fields:', { title, content, communityId })
+      toast({
+        title: 'Error',
+        description: 'Please fill in all required fields.',
+        variant: 'destructive',
+      })
+      setIsLoading(false)
+      return
+    }
+
+    console.log('Sending request to /api/takes')
     fetch('/api/takes', {
       method: 'POST',
       headers: {
@@ -69,17 +97,26 @@ export default function SubmitPage() {
         communityId,
       }),
     })
-      .then((response) => {
+      .then(async (response) => {
+        console.log('Response status:', response.status)
         if (!response.ok) {
-          throw new Error('Failed to create take')
+          const errorText = await response.text()
+          console.log('Error response:', errorText)
+          throw new Error(errorText || 'Failed to create take')
         }
         return response.json()
       })
       .then((take) => {
+        console.log('Take created successfully:', take)
         toast({
           title: 'Success',
           description: 'Your take has been shared.',
         })
+        // Clear the form and redirect
+        console.log('Form cleared, redirecting to:', `/k/${take.community.slug}`)
+        setTitle('')
+        setContent('')
+        setSelectedCommunityId(null)
         router.push(`/k/${take.community.slug}`)
       })
       .catch((error) => {
@@ -122,7 +159,7 @@ export default function SubmitPage() {
             </div>
           </div>
 
-          <form onSubmit={onSubmit} className="space-y-4">
+          <form onSubmit={onSubmit} className="space-y-4" id="submit-form">
             <div className="space-y-2">
               <Label htmlFor="communityId">Choose a Kulture</Label>
               <Select 
@@ -164,6 +201,11 @@ export default function SubmitPage() {
                 name="title"
                 required
                 placeholder="What's your take about?"
+                value={title}
+                onChange={(e) => {
+                  console.log('Title onChange:', e.target.value)
+                  setTitle(e.target.value)
+                }}
               />
             </div>
 
@@ -176,6 +218,11 @@ export default function SubmitPage() {
                 name="content"
                 placeholder="Share your thoughts..."
                 className="min-h-[200px]"
+                value={content}
+                onChange={(e) => {
+                  console.log('Textarea onChange:', e.target.value)
+                  setContent(e.target.value)
+                }}
               />
             </div>
 
@@ -188,7 +235,10 @@ export default function SubmitPage() {
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isLoading}>
+              <Button 
+                type="submit" 
+                disabled={isLoading}
+              >
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

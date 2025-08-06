@@ -12,27 +12,33 @@ import { useTakes } from '@/lib/contexts/TakesContext'
 
 interface SwipeableTakeFeedProps {
   initialTakes: Take[]
+  takes?: Take[] // Current takes (can be different from initialTakes if updated)
   communityId?: string
   communitySlug: string | null
   onTakeViewed?: (takeId: string) => void
   onVote?: (takeId: string, type: 'UP' | 'DOWN') => Promise<void>
+  showDeleteButton?: boolean
+  onDelete?: (takeId: string) => void
 }
 
 export default function SwipeableTakeFeed({
   initialTakes,
+  takes: propTakes,
   communityId,
   communitySlug,
   onTakeViewed,
   onVote,
+  showDeleteButton = false,
+  onDelete,
 }: SwipeableTakeFeedProps) {
   const { data: session } = useSession()
   const { toast } = useToast()
-  const { takes } = useTakes()
+  const { takes: contextTakes } = useTakes()
   const [currentIndex, setCurrentIndex] = useState(0)
   const [showNoMoreTakes, setShowNoMoreTakes] = useState(false)
 
-  // Use initialTakes if provided, otherwise use takes from context
-  const currentTakes = initialTakes || takes
+  // Use propTakes if provided, otherwise use initialTakes, otherwise use context takes
+  const currentTakes = propTakes || initialTakes || contextTakes
 
   const handlePrevious = useCallback(() => {
     if (!communitySlug) {
@@ -161,6 +167,8 @@ export default function SwipeableTakeFeed({
           onPrevious={handlePrevious}
           hasPrevious={hasPrevious}
           isLastTake={isLastTake}
+          showDeleteButton={showDeleteButton}
+          onDelete={onDelete}
         />
       )}
       {showNoMoreTakes && (
