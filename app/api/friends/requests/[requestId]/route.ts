@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import prisma from '@/lib/prisma'
+import { db } from '@/lib/db'
 
 export async function PATCH(
   request: Request,
@@ -16,7 +16,7 @@ export async function PATCH(
 
     const { status } = await request.json()
 
-    const friendRequest = await prisma.friendRequest.findUnique({
+    const friendRequest = await db.friendRequest.findUnique({
       where: { id: params.requestId }
     })
 
@@ -30,24 +30,24 @@ export async function PATCH(
 
     if (status === 'ACCEPTED') {
       // Create friendship records for both users and notification
-      await prisma.$transaction([
-        prisma.friendship.create({
+      await db.$transaction([
+        db.friendship.create({
           data: {
             userId: friendRequest.senderId,
             friendId: friendRequest.receiverId,
           }
         }),
-        prisma.friendship.create({
+        db.friendship.create({
           data: {
             userId: friendRequest.receiverId,
             friendId: friendRequest.senderId,
           }
         }),
-        prisma.friendRequest.update({
+        db.friendRequest.update({
           where: { id: params.requestId },
           data: { status: 'ACCEPTED' }
         }),
-        prisma.notification.create({
+        db.notification.create({
           data: {
             type: 'FRIEND_REQUEST_ACCEPTED',
             userId: friendRequest.senderId,
@@ -58,7 +58,7 @@ export async function PATCH(
       ])
     } else {
       // Update request status to REJECTED
-      await prisma.friendRequest.update({
+      await db.friendRequest.update({
         where: { id: params.requestId },
         data: { status }
       })

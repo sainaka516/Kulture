@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import prisma from '@/lib/prisma'
+import { db } from '@/lib/db'
 
 export async function GET() {
   try {
@@ -12,20 +12,20 @@ export async function GET() {
     }
 
     // Get viewed takes for the current user
-    const viewedTakeIds = (await prisma.viewedTake.findMany({
+    const viewedTakeIds = (await db.viewedTake.findMany({
       where: { userId: session.user.id },
       select: { takeId: true }
     })).map(vt => vt.takeId)
 
     // Get friends' IDs
-    const friendIds = (await prisma.friendship.findMany({
+    const friendIds = (await db.friendship.findMany({
       where: { userId: session.user.id },
       select: { friendId: true }
     })).map(f => f.friendId)
 
     // Get friends' takes first if user has friends
     const friendsTakes = friendIds.length > 0
-      ? await prisma.take.findMany({
+      ? await db.take.findMany({
           where: {
             id: { notIn: viewedTakeIds },
             authorId: { in: friendIds }
@@ -100,7 +100,7 @@ export async function GET() {
       : []
 
     // Get takes from other users
-    const otherTakes = await prisma.take.findMany({
+    const otherTakes = await db.take.findMany({
       where: {
         id: { notIn: viewedTakeIds },
         authorId: { notIn: [...friendIds, session.user.id] }

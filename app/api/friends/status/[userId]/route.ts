@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import prisma from '@/lib/prisma'
+import { db } from '@/lib/db'
 
 export async function GET(
   request: Request,
@@ -17,7 +17,7 @@ export async function GET(
     const { userId } = params
 
     // Check if they are already friends
-    const friendship = await prisma.friendship.findFirst({
+    const friendship = await db.friendship.findFirst({
       where: {
         OR: [
           { userId: session.user.id, friendId: userId },
@@ -31,7 +31,7 @@ export async function GET(
     }
 
     // Check if there's a pending friend request
-    const friendRequest = await prisma.friendRequest.findFirst({
+    const friendRequest = await db.friendRequest.findFirst({
       where: {
         OR: [
           { senderId: session.user.id, receiverId: userId },

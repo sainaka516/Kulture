@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import prisma from '@/lib/prisma'
+import { db } from '@/lib/db'
 
 export async function POST(
   req: Request,
@@ -14,7 +14,7 @@ export async function POST(
       return new NextResponse('Unauthorized', { status: 401 })
     }
 
-    const community = await prisma.community.findUnique({
+    const community = await db.community.findUnique({
       where: { slug: params.slug },
       include: {
         members: {
@@ -31,7 +31,7 @@ export async function POST(
 
     // If user is already a member, remove them (unsubscribe)
     if (community.members.length > 0) {
-      await prisma.communityMember.delete({
+      await db.communityMember.delete({
         where: {
           userId_communityId: {
             userId: session.user.id,
@@ -43,7 +43,7 @@ export async function POST(
     }
 
     // If user is not a member, add them (subscribe)
-    await prisma.communityMember.create({
+    await db.communityMember.create({
       data: {
         userId: session.user.id,
         communityId: community.id,

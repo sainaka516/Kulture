@@ -1,7 +1,7 @@
 import { getServerSession } from 'next-auth'
 import { NextResponse } from 'next/server'
 import { authOptions } from '@/lib/auth'
-import prisma from '@/lib/prisma'
+import { db } from '@/lib/db'
 
 export async function POST(
   request: Request,
@@ -21,7 +21,7 @@ export async function POST(
       return new NextResponse('Missing content', { status: 400 })
     }
 
-    const comment = await prisma.comment.create({
+    const comment = await db.comment.create({
       data: {
         content,
         authorId: session.user.id,

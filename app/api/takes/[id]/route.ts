@@ -1,14 +1,14 @@
 import { getServerSession } from 'next-auth'
 import { NextResponse } from 'next/server'
 import { authOptions } from '@/lib/auth'
-import prisma from '@/lib/prisma'
+import { db } from '@/lib/db'
 
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
-    const take = await prisma.take.findUnique({
+    const take = await db.take.findUnique({
       where: {
         id: params.id,
       },
@@ -69,7 +69,7 @@ export async function DELETE(
       return new NextResponse('Unauthorized', { status: 401 })
     }
 
-    const take = await prisma.take.findUnique({
+    const take = await db.take.findUnique({
       where: {
         id: params.id,
       },
@@ -86,7 +86,7 @@ export async function DELETE(
       return new NextResponse('Forbidden', { status: 403 })
     }
 
-    await prisma.take.delete({
+    await db.take.delete({
       where: {
         id: params.id,
       },

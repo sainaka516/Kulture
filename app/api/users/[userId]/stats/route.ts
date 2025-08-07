@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import prisma from '@/lib/prisma'
+import { db } from '@/lib/db'
 
 export async function GET(
   request: Request,
@@ -23,13 +23,13 @@ export async function GET(
 
     // Get user stats
     const [takes, comments, communities, user] = await Promise.all([
-      prisma.take.count({
+      db.take.count({
         where: { authorId: userId }
       }),
-      prisma.comment.count({
+      db.comment.count({
         where: { authorId: userId }
       }),
-      prisma.communityMember.findMany({
+      db.communityMember.findMany({
         where: { userId },
         include: {
           community: {
@@ -41,7 +41,7 @@ export async function GET(
           }
         }
       }),
-      prisma.user.findUnique({
+      db.user.findUnique({
         where: { id: userId },
         select: { createdAt: true }
       })

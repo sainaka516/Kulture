@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server'
-import prisma from '@/lib/prisma'
+import { db } from '@/lib/db'
 
 export async function GET(
   request: Request,
   { params }: { params: { slug: string } }
 ) {
   try {
-    const community = await prisma.community.findUnique({
+    const community = await db.community.findUnique({
       where: { slug: params.slug },
       select: {
         id: true,

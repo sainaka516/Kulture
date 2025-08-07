@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 import { Loader2 } from 'lucide-react'
-import prisma from '@/lib/prisma'
+import { db } from '@/lib/db'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { transformTake } from '@/lib/utils'
@@ -19,7 +19,7 @@ export default async function TakePage({ params }: TakePageProps) {
   // Get the current user's session
   const session = await getServerSession(authOptions)
 
-  const take = await prisma.take.findUnique({
+  const take = await db.take.findUnique({
     where: {
       id: params.id,
     },

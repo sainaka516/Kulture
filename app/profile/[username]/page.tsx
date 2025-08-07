@@ -2,7 +2,7 @@ import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 import { Loader2 } from 'lucide-react'
-import prisma from '@/lib/prisma'
+import { db } from '@/lib/db'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { transformTake } from '@/lib/utils'
@@ -15,7 +15,7 @@ interface ProfilePageProps {
 }
 
 export async function generateMetadata({ params }: ProfilePageProps): Promise<Metadata> {
-  const user = await prisma.user.findUnique({
+  const user = await db.user.findUnique({
     where: {
       username: params.username,
     },
@@ -39,7 +39,7 @@ export async function generateMetadata({ params }: ProfilePageProps): Promise<Me
 
 export default async function ProfilePage({ params }: ProfilePageProps) {
   const session = await getServerSession(authOptions)
-  const user = await prisma.user.findUnique({
+  const user = await db.user.findUnique({
     where: { username: params.username },
     include: {
       takes: {

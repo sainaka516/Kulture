@@ -1,7 +1,7 @@
 import { getServerSession } from 'next-auth'
 import { NextResponse } from 'next/server'
 import { authOptions } from '@/lib/auth'
-import prisma from '@/lib/prisma'
+import { db } from '@/lib/db'
 
 export async function POST(
   request: Request,
@@ -15,7 +15,7 @@ export async function POST(
     }
 
     // First get the community by slug
-    const community = await prisma.community.findUnique({
+    const community = await db.community.findUnique({
       where: {
         slug: params.slug,
       },
@@ -26,7 +26,7 @@ export async function POST(
     }
 
     // Check if already a member
-    const existingMembership = await prisma.communityMember.findUnique({
+    const existingMembership = await db.communityMember.findUnique({
       where: {
         userId_communityId: {
           userId: session.user.id,
@@ -40,7 +40,7 @@ export async function POST(
     }
 
     // Create the community membership
-    await prisma.communityMember.create({
+    await db.communityMember.create({
       data: {
         userId: session.user.id,
         communityId: community.id,

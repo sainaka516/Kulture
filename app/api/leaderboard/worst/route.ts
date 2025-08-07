@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
-import prisma from '@/lib/prisma'
+import { db } from '@/lib/db'
 
 export async function GET() {
   try {
     // Get all takes with their votes and authors
-    const worstTakes = await prisma.take.findMany({
+    const worstTakes = await db.take.findMany({
       include: {
         author: {
           select: {

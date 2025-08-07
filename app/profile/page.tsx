@@ -15,7 +15,7 @@ import { Take } from '@/lib/types'
 import { TakesProvider } from '@/lib/contexts/TakesContext'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
-import prisma from '@/lib/prisma'
+import { db } from '@/lib/db'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { transformTake } from '@/lib/utils'
@@ -41,7 +41,7 @@ export default async function ProfilePage() {
   }
 
   // Fetch user's takes
-  const takes = await prisma.take.findMany({
+      const takes = await db.take.findMany({
     where: {
       authorId: session.user.id,
     },

@@ -1,7 +1,7 @@
 import { getServerSession } from 'next-auth'
 import { NextResponse } from 'next/server'
 import { authOptions } from '@/lib/auth'
-import prisma from '@/lib/prisma'
+import { db } from '@/lib/db'
 
 export async function POST(
   request: Request,
@@ -22,7 +22,7 @@ export async function POST(
     }
 
     // Check if take exists
-    const take = await prisma.take.findUnique({
+    const take = await db.take.findUnique({
       where: { id: params.id },
       include: {
         votes: {
@@ -43,14 +43,14 @@ export async function POST(
     if (existingVote) {
       if (existingVote.type === type) {
         // Remove vote if same type
-        await prisma.vote.delete({
+        await db.vote.delete({
           where: {
             id: existingVote.id
           }
         })
       } else {
         // Update vote if different type
-        await prisma.vote.update({
+        await db.vote.update({
           where: {
             id: existingVote.id
           },
@@ -61,7 +61,7 @@ export async function POST(
       }
     } else {
       // Create new vote
-      await prisma.vote.create({
+      await db.vote.create({
         data: {
           type,
           userId: session.user.id,
@@ -71,7 +71,7 @@ export async function POST(
     }
 
     // Get updated take with all votes and community data
-    const updatedTake = await prisma.take.findUnique({
+    const updatedTake = await db.take.findUnique({
       where: {
         id: params.id,
       },

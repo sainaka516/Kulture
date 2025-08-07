@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import prisma from '@/lib/prisma'
+import { db } from '@/lib/db'
 import { Prisma } from '@prisma/client'
 
 // Get all descendant IDs using a recursive CTE query
@@ -10,7 +10,7 @@ async function getAllDescendantIds(communityId: string): Promise<string[]> {
   
   try {
     // Use Prisma's $queryRaw to execute a recursive CTE query
-    const result = await prisma.$queryRaw<Array<{ id: string }>>`
+    const result = await db.$queryRaw<Array<{ id: string }>>`
       WITH RECURSIVE descendants AS (
         -- Base case: direct children
         SELECT id, name, "parentId", 1 as level
@@ -46,7 +46,7 @@ export async function GET(
     const limit = parseInt(searchParams.get('limit') || '10')
 
     // Get the community with its hierarchy
-    const community = await prisma.community.findUnique({
+    const community = await db.community.findUnique({
       where: { 
         slug: params.slug 
       },
@@ -68,7 +68,7 @@ export async function GET(
     }
 
     // Get takes with related data
-    const takes = await prisma.take.findMany({
+    const takes = await db.take.findMany({
       where: {
         communityId: community.id
       },

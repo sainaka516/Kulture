@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import prisma from '@/lib/prisma'
+import { db } from '@/lib/db'
 
 export async function GET() {
   try {
@@ -10,7 +10,7 @@ export async function GET() {
       return new NextResponse('Unauthorized', { status: 401 })
     }
 
-    const notifications = await prisma.notification.findMany({
+    const notifications = await db.notification.findMany({
       where: {
         userId: session.user.id,
       },
@@ -50,7 +50,7 @@ export async function PUT(req: Request) {
 
     const { notificationIds } = await req.json()
 
-    await prisma.notification.updateMany({
+    await db.notification.updateMany({
       where: {
         id: {
           in: notificationIds,
@@ -80,7 +80,7 @@ export async function POST(req: Request) {
 
     // For vote notifications, get the take's author
     if (type === 'TAKE_UPVOTED' || type === 'TAKE_DOWNVOTED') {
-      const take = await prisma.take.findUnique({
+      const take = await db.take.findUnique({
         where: { id: takeId },
         select: { authorId: true },
       })
@@ -95,7 +95,7 @@ export async function POST(req: Request) {
       }
 
       // Create the notification
-      const notification = await prisma.notification.create({
+      const notification = await db.notification.create({
         data: {
           type,
           userId: take.authorId,

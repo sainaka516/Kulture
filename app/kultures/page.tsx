@@ -4,7 +4,7 @@ import { Metadata } from 'next'
 import { Suspense } from 'react'
 import Link from 'next/link'
 import { Loader2, Plus } from 'lucide-react'
-import prisma from '@/lib/prisma'
+import { db } from '@/lib/db'
 import KultureList from '@/components/KultureList'
 import { Button } from '@/components/ui/button'
 
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 
 export default async function KulturesPage() {
   // Get all parent communities with their member counts and relations
-  const communities = await prisma.community.findMany({
+  const communities = await db.community.findMany({
     where: {
       parentId: null,
     },

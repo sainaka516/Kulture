@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { hash, compare } from 'bcryptjs';
-import prisma from '@/lib/prisma';
+import { db } from '@/lib/db';
 import { authOptions } from '@/lib/auth';
 
 export async function POST(req: Request) {
@@ -19,7 +19,7 @@ export async function POST(req: Request) {
     }
 
     // Get user from database
-    const user = await prisma.user.findUnique({
+    const user = await db.user.findUnique({
       where: { email: session.user.email },
       select: {
         id: true,
@@ -41,7 +41,7 @@ export async function POST(req: Request) {
     const hashedPassword = await hash(newPassword, 12);
 
     // Update password in database
-    await prisma.user.update({
+    await db.user.update({
       where: { id: user.id },
       data: { password: hashedPassword },
     });

@@ -4,7 +4,7 @@ import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 import { Loader2 } from 'lucide-react'
-import prisma from '@/lib/prisma'
+import { db } from '@/lib/db'
 import CommunityClient from './community-client'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
@@ -16,7 +16,7 @@ async function getAllDescendantIds(communityId: string): Promise<string[]> {
   
   try {
     // Use Prisma's $queryRaw to execute a recursive CTE query
-    const result = await prisma.$queryRaw<Array<{ id: string }>>`
+    const result = await db.$queryRaw<Array<{ id: string }>>`
       WITH RECURSIVE descendants AS (
         -- Base case: direct children
         SELECT id, name, "parentId", 1 as level
@@ -48,7 +48,7 @@ interface PageProps {
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const community = await prisma.community.findUnique({
+  const community = await db.community.findUnique({
     where: { slug: params.slug },
     select: {
       name: true,
@@ -66,7 +66,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function CommunityPage({ params }: PageProps) {
   // First get the community to check if it's a parent or child
-  const community = await prisma.community.findUnique({
+  const community = await db.community.findUnique({
     where: {
       slug: params.slug,
     },
@@ -147,7 +147,7 @@ export default async function CommunityPage({ params }: PageProps) {
   const allRelevantIds = [community.id]
 
   // Fetch takes from parent and all descendants
-  const takes = await prisma.take.findMany({
+  const takes = await db.take.findMany({
     where: {
       communityId: { in: allRelevantIds }
     },

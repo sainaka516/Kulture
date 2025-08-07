@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 import { Loader2 } from 'lucide-react'
-import prisma from '@/lib/prisma'
+import { db } from '@/lib/db'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { transformTake } from '@/lib/utils'
@@ -22,14 +22,14 @@ async function getTakes() {
     }
 
     // Get viewed takes for the current user
-    const viewedTakeIds = (await prisma.viewedTake.findMany({
+    const viewedTakeIds = (await db.viewedTake.findMany({
       where: { userId: session.user.id },
       select: { takeId: true }
     })).map(vt => vt.takeId)
     console.log('Viewed take IDs:', viewedTakeIds)
 
     // Get friends' IDs
-    const friendIds = (await prisma.friendship.findMany({
+    const friendIds = (await db.friendship.findMany({
       where: { userId: session.user.id },
       select: { friendId: true }
     })).map(f => f.friendId)
@@ -37,7 +37,7 @@ async function getTakes() {
 
     // Get friends' takes first if user has friends
     const friendsTakes = friendIds.length > 0
-      ? await prisma.take.findMany({
+      ? await db.take.findMany({
           where: {
             id: { notIn: viewedTakeIds },
             authorId: { in: friendIds }
@@ -114,7 +114,7 @@ async function getTakes() {
     console.log('Friends takes:', friendsTakes.map(t => ({ id: t.id, title: t.title, authorId: t.authorId })))
 
     // Get takes from other users
-    const otherTakes = await prisma.take.findMany({
+    const otherTakes = await db.take.findMany({
       where: {
         id: { notIn: viewedTakeIds },
         authorId: { notIn: [...friendIds, session.user.id] }

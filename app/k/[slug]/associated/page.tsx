@@ -1,6 +1,6 @@
 import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import prisma from '@/lib/prisma'
+import { db } from '@/lib/db'
 import AssociatedKulturesClient from './associated-kultures-client'
 
 interface AssociatedKulturesPageProps {
@@ -10,7 +10,7 @@ interface AssociatedKulturesPageProps {
 }
 
 export async function generateMetadata({ params }: AssociatedKulturesPageProps): Promise<Metadata> {
-  const community = await prisma.community.findUnique({
+  const community = await db.community.findUnique({
     where: { slug: params.slug },
     select: {
       name: true,
@@ -26,7 +26,7 @@ export async function generateMetadata({ params }: AssociatedKulturesPageProps):
 }
 
 export default async function AssociatedKulturesPage({ params }: AssociatedKulturesPageProps) {
-  const community = await prisma.community.findUnique({
+  const community = await db.community.findUnique({
     where: { slug: params.slug },
     include: {
       children: {

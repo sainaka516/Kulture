@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import prisma from '@/lib/prisma'
+import { db } from '@/lib/db'
 
 export async function GET(
   request: Request,
@@ -19,7 +19,7 @@ export async function GET(
   }
 
   try {
-    const takes = await prisma.take.findMany({
+    const takes = await db.take.findMany({
       where: {
         authorId: params.userId,
       },

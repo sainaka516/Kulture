@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import prisma from '@/lib/prisma'
+import { db } from '@/lib/db'
 
 export async function GET(
   request: Request,
@@ -7,7 +7,7 @@ export async function GET(
 ) {
   try {
     // Get all takes with their vote counts and community member counts
-    const takes = await prisma.take.findMany({
+    const takes = await db.take.findMany({
       include: {
         author: {
           select: {

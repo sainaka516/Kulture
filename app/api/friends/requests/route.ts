@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import prisma from '@/lib/prisma'
+import { db } from '@/lib/db'
 
 // Get friend requests
 export async function GET() {
@@ -12,7 +12,7 @@ export async function GET() {
       return new NextResponse('Unauthorized', { status: 401 })
     }
 
-    const requests = await prisma.friendRequest.findMany({
+    const requests = await db.friendRequest.findMany({
       where: {
         receiverId: session.user.id,
         status: 'PENDING'
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
     const { receiverId } = await request.json()
 
     // Check if request already exists
-    const existingRequest = await prisma.friendRequest.findFirst({
+    const existingRequest = await db.friendRequest.findFirst({
       where: {
         OR: [
           { senderId: session.user.id, receiverId },
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
     }
 
     // Check if already friends
-    const existingFriendship = await prisma.friendship.findFirst({
+    const existingFriendship = await db.friendship.findFirst({
       where: {
         OR: [
           { userId: session.user.id, friendId: receiverId },
@@ -75,7 +75,7 @@ export async function POST(request: Request) {
       return new NextResponse('Already friends', { status: 400 })
     }
 
-    const friendRequest = await prisma.friendRequest.create({
+    const friendRequest = await db.friendRequest.create({
       data: {
         senderId: session.user.id,
         receiverId

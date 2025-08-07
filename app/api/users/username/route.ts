@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import prisma from '@/lib/prisma'
+import { db } from '@/lib/db'
 
 export async function PATCH(request: Request) {
   try {
@@ -19,7 +19,7 @@ export async function PATCH(request: Request) {
     }
 
     // Check if username is already taken
-    const existingUser = await prisma.user.findUnique({
+    const existingUser = await db.user.findUnique({
       where: { username }
     })
 
@@ -28,7 +28,7 @@ export async function PATCH(request: Request) {
     }
 
     // Update username
-    const updatedUser = await prisma.user.update({
+    const updatedUser = await db.user.update({
       where: { id: session.user.id },
       data: { username }
     })

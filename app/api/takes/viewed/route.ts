@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import prisma from '@/lib/prisma'
+import { db } from '@/lib/db'
 
 // Mark a take as viewed
 export async function POST(request: Request) {
@@ -16,7 +16,7 @@ export async function POST(request: Request) {
       return new NextResponse('Take ID is required', { status: 400 })
     }
 
-    const viewedTake = await prisma.viewedTake.create({
+    const viewedTake = await db.viewedTake.create({
       data: {
         userId: session.user.id,
         takeId,
@@ -47,7 +47,7 @@ export async function GET(request: Request) {
     const limit = parseInt(searchParams.get('limit') || '10')
     const skip = (page - 1) * limit
 
-    const viewedTakes = await prisma.viewedTake.findMany({
+    const viewedTakes = await db.viewedTake.findMany({
       where: {
         userId: session.user.id,
       },
@@ -127,7 +127,7 @@ export async function GET(request: Request) {
       take: limit,
     })
 
-    const total = await prisma.viewedTake.count({
+    const total = await db.viewedTake.count({
       where: {
         userId: session.user.id,
       },

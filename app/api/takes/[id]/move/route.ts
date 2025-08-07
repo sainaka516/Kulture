@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import prisma from '@/lib/prisma'
+import { db } from '@/lib/db'
 
 export async function PATCH(
   request: Request,
@@ -19,7 +19,7 @@ export async function PATCH(
     }
 
     // Get the take and verify ownership
-    const take = await prisma.take.findUnique({
+    const take = await db.take.findUnique({
       where: { id: params.id },
       select: {
         authorId: true,
@@ -37,7 +37,7 @@ export async function PATCH(
     }
 
     // Verify the target community exists
-    const targetCommunity = await prisma.community.findUnique({
+    const targetCommunity = await db.community.findUnique({
       where: { id: communityId },
     })
 
@@ -46,7 +46,7 @@ export async function PATCH(
     }
 
     // Move the take to the new community
-    const updatedTake = await prisma.take.update({
+    const updatedTake = await db.take.update({
       where: { id: params.id },
       data: { communityId },
       include: {
