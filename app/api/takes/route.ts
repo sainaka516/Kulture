@@ -1,7 +1,7 @@
 import { getServerSession } from 'next-auth'
 import { NextResponse } from 'next/server'
 import { authOptions } from '@/lib/auth'
-import prisma from '@/lib/prisma'
+import { db } from '@/lib/db'
 
 export async function GET(request: Request) {
   try {
@@ -11,7 +11,7 @@ export async function GET(request: Request) {
     const limit = parseInt(searchParams.get('limit') || '10')
 
     // Get takes that the user hasn't viewed yet
-    const takes = await prisma.take.findMany({
+    const takes = await db.take.findMany({
       where: {
         NOT: {
           viewedBy: {
@@ -117,7 +117,7 @@ export async function POST(request: Request) {
       return new NextResponse('Missing required fields', { status: 400 })
     }
 
-    const take = await prisma.take.create({
+    const take = await db.take.create({
       data: {
         title,
         content,

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import prisma from '@/lib/prisma'
+import { db } from '@/lib/db'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 
@@ -24,7 +24,7 @@ export async function GET(request: Request) {
 
     // Only search requested types or all if not specified
     if (type === 'all' || type === 'users') {
-      searchResults.users = await prisma.user.findMany({
+      searchResults.users = await db.user.findMany({
         where: {
           OR: [
             { name: { contains: query, mode: 'insensitive' } },
@@ -42,7 +42,7 @@ export async function GET(request: Request) {
     }
 
     if (type === 'all' || type === 'kultures') {
-      searchResults.kultures = await prisma.community.findMany({
+      searchResults.kultures = await db.community.findMany({
         where: {
           OR: [
             { name: { contains: query, mode: 'insensitive' } },
@@ -66,7 +66,7 @@ export async function GET(request: Request) {
     }
 
     if (type === 'all' || type === 'takes') {
-      const takes = await prisma.take.findMany({
+      const takes = await db.take.findMany({
         where: {
           OR: [
             { title: { contains: query, mode: 'insensitive' } },

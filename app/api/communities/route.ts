@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import prisma from '@/lib/prisma'
+import { db } from '@/lib/db'
 import { Prisma } from '@prisma/client'
 
 export async function GET() {
   try {
-    const communities = await prisma.community.findMany({
+    const communities = await db.community.findMany({
       orderBy: {
         createdAt: 'desc',
       },
@@ -93,7 +93,7 @@ export async function POST(req: Request) {
     }
 
     // First, verify the user exists in the database
-    const user = await prisma.user.findUnique({
+    const user = await db.user.findUnique({
       where: {
         email: session.user.email
       }
@@ -121,7 +121,7 @@ export async function POST(req: Request) {
       .replace(/^-+|-+$/g, '')
 
     // Check if community name or slug is already taken
-    const existingCommunity = await prisma.community.findFirst({
+    const existingCommunity = await db.community.findFirst({
       where: {
         OR: [
           { name },
@@ -153,7 +153,7 @@ export async function POST(req: Request) {
 
     // Only add parent relation if parentId is provided
     if (parentId) {
-      const parentCommunity = await prisma.community.findUnique({
+      const parentCommunity = await db.community.findUnique({
         where: { id: parentId }
       })
 
@@ -174,12 +174,12 @@ export async function POST(req: Request) {
     console.log('[COMMUNITIES_POST] Creating community with data:', communityData)
 
     // First create the community
-    const community = await prisma.community.create({
+    const community = await db.community.create({
       data: communityData
     })
 
     // Then create the community member record
-    await prisma.communityMember.create({
+    await db.communityMember.create({
       data: {
         userId: user.id,
         communityId: community.id,
@@ -188,7 +188,7 @@ export async function POST(req: Request) {
     })
 
     // Finally fetch the community with all related data
-    const fullCommunity = await prisma.community.findUnique({
+    const fullCommunity = await db.community.findUnique({
       where: { id: community.id },
       include: {
         parent: {
