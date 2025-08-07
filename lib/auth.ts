@@ -1,7 +1,7 @@
 import { PrismaAdapter } from '@auth/prisma-adapter'
 import { NextAuthOptions } from 'next-auth'
 import GoogleProvider from 'next-auth/providers/google'
-import prisma from '@/lib/prisma'
+import { db } from '@/lib/db'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
 import * as z from 'zod'
@@ -62,7 +62,7 @@ async function authorize(credentials: Record<"username" | "password", string> | 
     const isEmail = username.includes('@')
     console.log('[AUTH] Attempting login with:', { username, isEmail })
 
-    const user = await prisma.user.findUnique({
+    const user = await db.user.findUnique({
       where: isEmail ? { email: username.toLowerCase() } : { username: username.toLowerCase() },
     })
 
@@ -104,7 +104,7 @@ async function authorize(credentials: Record<"username" | "password", string> | 
 }
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma) as any,
+  adapter: PrismaAdapter(db) as any,
   session: {
     strategy: 'jwt',
     maxAge: 30 * 24 * 60 * 60, // 30 days
@@ -152,7 +152,7 @@ export const authOptions: NextAuthOptions = {
           console.log('[AUTH] Attempting login with:', { username, isEmail })
 
           // Try to find user by email or username
-          const user = await prisma.user.findUnique({
+          const user = await db.user.findUnique({
             where: isEmail 
               ? { email: username.toLowerCase() }
               : { username: username.toLowerCase() }
@@ -206,7 +206,7 @@ export const authOptions: NextAuthOptions = {
 
         if (account?.provider === 'google') {
           // Find or create user
-          let dbUser = await prisma.user.findUnique({
+          let dbUser = await db.user.findUnique({
             where: { email: user.email },
             include: { accounts: true }
           })
@@ -218,10 +218,10 @@ export const authOptions: NextAuthOptions = {
             let counter = 1
 
             while (true) {
-              const exists = await prisma.user.findUnique({
-                where: { username },
-                select: { id: true }
-              })
+                          const exists = await db.user.findUnique({
+              where: { username },
+              select: { id: true }
+            })
               
               if (!exists) break
               username = `${baseUsername}${counter}`
@@ -229,7 +229,7 @@ export const authOptions: NextAuthOptions = {
             }
 
             // Create new user
-            dbUser = await prisma.user.create({
+            dbUser = await db.user.create({
               data: {
                 email: user.email,
                 name: profile?.name || username,
@@ -253,7 +253,7 @@ export const authOptions: NextAuthOptions = {
             })
           } else if (!dbUser.accounts.some(acc => acc.provider === 'google')) {
             // Link Google account to existing user
-            await prisma.account.create({
+            await db.account.create({
               data: {
                 userId: dbUser.id,
                 type: account.type,
