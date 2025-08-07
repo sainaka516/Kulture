@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import prisma from '@/lib/prisma'
+import { db } from '@/lib/db'
 import bcrypt from 'bcryptjs'
 import * as z from 'zod'
 
@@ -52,7 +52,7 @@ export async function POST(req: Request) {
     }
 
     // Check if username is taken
-    const existingUsername = await prisma.user.findUnique({
+    const existingUsername = await db.user.findUnique({
       where: { username: signupData.username.toLowerCase() }
     })
 
@@ -67,7 +67,7 @@ export async function POST(req: Request) {
     }
 
     // Check if email is taken
-    const existingEmail = await prisma.user.findUnique({
+    const existingEmail = await db.user.findUnique({
       where: { email: signupData.email.toLowerCase() }
     })
 
@@ -103,7 +103,7 @@ export async function POST(req: Request) {
       password: '[HIDDEN]'
     })
 
-    const user = await prisma.user.create({
+    const user = await db.user.create({
       data: userData,
       select: {
         id: true,
