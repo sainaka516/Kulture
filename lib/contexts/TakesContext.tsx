@@ -14,13 +14,13 @@ export const TakesContext = createContext<TakesContextType | undefined>(undefine
 
 interface TakesProviderProps {
   children: React.ReactNode
-  initialTakes: Take[]
+  initialTakes?: Take[]
 }
 
 export function TakesProvider({ children, initialTakes }: TakesProviderProps) {
-  const [takes, setTakes] = useState<Take[]>(initialTakes)
+  const [takes, setTakes] = useState<Take[]>(initialTakes || [])
   
-  console.log('TakesProvider: Initialized with', initialTakes.length, 'takes')
+  console.log('TakesProvider: Initialized with', (initialTakes || []).length, 'takes')
 
   const getCurrentTake = (takeId: string) => {
     return takes.find(take => take.id === takeId)
@@ -63,7 +63,7 @@ export function TakesProvider({ children, initialTakes }: TakesProviderProps) {
   useEffect(() => {
     setTakes(prev => {
       // Preserve existing vote data when updating takes
-      return initialTakes.map(newTake => {
+      return (initialTakes || []).map(newTake => {
         const existingTake = prev.find(t => t.id === newTake.id)
         if (existingTake) {
           return {

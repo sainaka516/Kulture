@@ -34,15 +34,15 @@ export default function TakeFeed({ takes, currentKultureSlug, defaultView = 'lis
   const [view, setView] = useState<'swipe' | 'list'>(defaultView)
 
   // Force using context takes if available, otherwise fall back to props
-  const currentTakes = contextTakes.length > 0 ? contextTakes : takes
+  const currentTakes = (contextTakes && contextTakes.length > 0) ? contextTakes : (takes || [])
   
   // Debug logging
   console.log('TakeFeed Debug:', {
-    contextTakesLength: contextTakes.length,
-    propsTakesLength: takes.length,
-    currentTakesLength: currentTakes.length,
-    usingContext: contextTakes.length > 0,
-    contextTakes: contextTakes.map(t => ({ id: t.id, votes: t.votes?.length || 0, userVote: t.userVote }))
+    contextTakesLength: contextTakes?.length || 0,
+    propsTakesLength: takes?.length || 0,
+    currentTakesLength: currentTakes?.length || 0,
+    usingContext: contextTakes && contextTakes.length > 0,
+    contextTakes: contextTakes?.map(t => ({ id: t.id, votes: t.votes?.length || 0, userVote: t.userVote })) || []
   })
 
 
