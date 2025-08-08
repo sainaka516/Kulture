@@ -133,7 +133,7 @@ export async function GET(request: Request) {
             id: true,
             content: true,
             createdAt: true,
-            user: {
+            author: {
               select: {
                 username: true
               }
