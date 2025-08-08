@@ -130,7 +130,7 @@ export function SearchBar() {
               <CommandEmpty>No results found.</CommandEmpty>
             ) : (
               <>
-                {results?.users.length ? (
+                {results?.users && results.users.length > 0 ? (
                   <CommandGroup heading="Users">
                     {results.users.map((user) => (
                       <CommandItem
@@ -150,7 +150,7 @@ export function SearchBar() {
                   </CommandGroup>
                 ) : null}
 
-                {results?.kultures.length ? (
+                {results?.kultures && results.kultures.length > 0 ? (
                   <CommandGroup heading="Kultures">
                     {results.kultures.map((kulture) => (
                       <CommandItem
@@ -168,7 +168,7 @@ export function SearchBar() {
                   </CommandGroup>
                 ) : null}
 
-                {results?.takes.length ? (
+                {results?.takes && results.takes.length > 0 ? (
                   <CommandGroup heading="Takes">
                     {results.takes.map((take) => (
                       <CommandItem

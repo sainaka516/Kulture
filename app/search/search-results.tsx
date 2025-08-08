@@ -156,7 +156,7 @@ export default function SearchResults() {
 
         <TabsContent value="all" className="space-y-8">
           {/* Users Section */}
-          {results?.users.length ? (
+          {results?.users && results.users.length > 0 ? (
             <div>
               <h2 className="text-xl font-semibold mb-4">Users</h2>
               <div className="grid gap-4 md:grid-cols-2">
@@ -178,7 +178,7 @@ export default function SearchResults() {
           ) : null}
 
           {/* Kultures Section */}
-          {results?.kultures.length ? (
+          {results?.kultures && results.kultures.length > 0 ? (
             <div>
               <h2 className="text-xl font-semibold mb-4">Kultures</h2>
               <div className="grid gap-4">
@@ -204,7 +204,7 @@ export default function SearchResults() {
           ) : null}
 
           {/* Takes Section */}
-          {results?.takes.length ? (
+          {results?.takes && results.takes.length > 0 ? (
             <div>
               <h2 className="text-xl font-semibold mb-4">Takes</h2>
               <div className="grid gap-4">
@@ -216,7 +216,7 @@ export default function SearchResults() {
             </div>
           ) : null}
 
-          {!results?.users.length && !results?.kultures.length && !results?.takes.length && (
+          {(!results?.users || results.users.length === 0) && (!results?.kultures || results.kultures.length === 0) && (!results?.takes || results.takes.length === 0) && (
             <div className="text-center py-12">
               <p className="text-muted-foreground">No results found for "{query}"</p>
             </div>
