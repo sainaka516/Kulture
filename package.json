@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev -H 0.0.0.0",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
     "postinstall": "prisma generate",
@@ -12,6 +12,11 @@
     "db:verify-migration": "tsx scripts/verify-migration.ts",
     "db:safe-migrate": "npm run db:backup && npm run db:verify-migration && npx prisma migrate deploy",
     "db:stats": "tsx scripts/verify-migration.ts --stats-only",
+    "db:setup": "./scripts/setup-db.sh",
+    "db:start": "./scripts/start-db.sh",
+    "db:stop": "./scripts/stop-db.sh",
+    "db:reset": "./scripts/reset-db.sh",
+    "db:studio": "npx prisma studio",
     "seed:test": "npx tsx scripts/seed-test-data.ts",
     "update-hierarchy": "tsx scripts/update-hierarchy.ts"
   },

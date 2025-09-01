@@ -79,6 +79,7 @@ export default function UserAuthForm({
         })
 
         const result = await response.json()
+        console.log('result', result)
         console.log('[AUTH] Signup response:', { status: response.status, ...result })
 
         if (!response.ok) {
