@@ -55,18 +55,10 @@ export async function middleware(request: NextRequest) {
       secret: process.env.NEXTAUTH_SECRET
     })
 
-    console.log('[MIDDLEWARE] Token check result:', {
-      pathname,
-      hasToken: !!token,
-      tokenId: token?.id,
-      tokenUsername: token?.username
-    })
-
     // If not authenticated, redirect to sign-in page
     if (!token) {
       const signInUrl = new URL('/sign-in', request.url)
       signInUrl.searchParams.set('callbackUrl', pathname)
-      console.log('[MIDDLEWARE] Redirecting to sign-in:', signInUrl.toString())
       return NextResponse.redirect(signInUrl)
     }
   } catch (error) {
