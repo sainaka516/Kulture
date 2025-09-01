@@ -7,6 +7,8 @@ const publicPaths = [
   '/sign-in',
   '/signup',
   '/api/auth',
+  '/api/debug-env',
+  '/api/auth/test',
   '/_next',
   '/images',
   '/favicon.ico',
@@ -47,13 +49,29 @@ export async function middleware(request: NextRequest) {
   }
 
   // For all other routes, check authentication
-  const token = await getToken({ 
-    req: request,
-    secret: process.env.NEXTAUTH_SECRET
-  })
+  try {
+    const token = await getToken({ 
+      req: request,
+      secret: process.env.NEXTAUTH_SECRET
+    })
 
-  // If not authenticated, redirect to sign-in page
-  if (!token) {
+    console.log('[MIDDLEWARE] Token check result:', {
+      pathname,
+      hasToken: !!token,
+      tokenId: token?.id,
+      tokenUsername: token?.username
+    })
+
+    // If not authenticated, redirect to sign-in page
+    if (!token) {
+      const signInUrl = new URL('/sign-in', request.url)
+      signInUrl.searchParams.set('callbackUrl', pathname)
+      console.log('[MIDDLEWARE] Redirecting to sign-in:', signInUrl.toString())
+      return NextResponse.redirect(signInUrl)
+    }
+  } catch (error) {
+    console.error('[MIDDLEWARE] Error checking authentication:', error)
+    // If there's an error checking auth, redirect to sign-in
     const signInUrl = new URL('/sign-in', request.url)
     signInUrl.searchParams.set('callbackUrl', pathname)
     return NextResponse.redirect(signInUrl)
@@ -71,6 +89,8 @@ export const config = {
      * 3. /images/* (static files)
      * 4. /favicon.ico (favicon file)
      * 5. /manifest.json (web manifest)
+     * 6. /api/debug-env (debug route)
+     * 7. /api/auth/test (auth test route)
      */
     '/((?!api/auth|_next|images|favicon.ico|manifest.json).*)',
   ],

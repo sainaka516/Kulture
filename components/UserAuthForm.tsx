@@ -134,6 +134,7 @@ export default function UserAuthForm({
           username: data.username.toLowerCase(),
           password: data.password,
           redirect: false,
+          callbackUrl: callbackUrl
         })
 
         console.log('[AUTH] Login result:', result)
@@ -147,11 +148,18 @@ export default function UserAuthForm({
           }
         }
 
+        // Check if we have a session after login
+        console.log('[AUTH] Login successful, checking session...')
+        
+        // Force a session refresh
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        
         toast.success('Signed in successfully!')
         
         // Wait a moment for the session to be established
         await new Promise(resolve => setTimeout(resolve, 2000))
         
+        console.log('[AUTH] Redirecting to:', callbackUrl)
         router.push(callbackUrl)
       }
     } catch (error) {

@@ -114,7 +114,8 @@ export const authOptions: NextAuthOptions = {
     signOut: '/sign-in',
     error: '/sign-in',
   },
-  debug: true,
+  debug: process.env.NODE_ENV === 'development',
+  secret: process.env.NEXTAUTH_SECRET,
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -282,6 +283,14 @@ export const authOptions: NextAuthOptions = {
       }
     },
     async jwt({ token, user, profile }) {
+      console.log('[AUTH] JWT callback called with:', {
+        hasToken: !!token,
+        hasUser: !!user,
+        hasProfile: !!profile,
+        tokenId: token?.id,
+        userId: user?.id
+      })
+      
       if (user) {
         token.id = user.id
         token.name = user.name || undefined
@@ -290,9 +299,21 @@ export const authOptions: NextAuthOptions = {
         token.picture = user.image || undefined
         token.verified = user.verified
       }
+      
+      console.log('[AUTH] JWT callback returning token:', {
+        tokenId: token?.id,
+        tokenUsername: token?.username
+      })
+      
       return token
     },
     async session({ session, token }) {
+      console.log('[AUTH] Session callback called with token:', {
+        hasToken: !!token,
+        tokenId: token?.id,
+        tokenUsername: token?.username
+      })
+      
       if (token) {
         session.user = {
           id: token.id || '',
@@ -303,6 +324,11 @@ export const authOptions: NextAuthOptions = {
           verified: token.verified || false,
         }
       }
+
+      console.log('[AUTH] Session callback returning session:', {
+        userId: session.user?.id,
+        username: session.user?.username
+      })
 
       return session
     }
