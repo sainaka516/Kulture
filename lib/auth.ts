@@ -303,6 +303,7 @@ export const authOptions: NextAuthOptions = {
           verified: token.verified || false,
         }
       }
+
       return session
     }
   }
