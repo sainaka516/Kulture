@@ -10,6 +10,7 @@ const publicPaths = [
   '/api/debug-env',
   '/api/auth/test',
   '/api/test-db',
+  '/api/test-user',
   '/_next',
   '/images',
   '/favicon.ico',
