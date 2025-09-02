@@ -55,10 +55,6 @@ export async function middleware(request: NextRequest) {
     return response
   }
 
-  // TEMPORARILY DISABLE AUTH CHECK FOR DEBUGGING
-  console.log('[MIDDLEWARE] Temporarily allowing all routes for debugging:', pathname)
-  return NextResponse.next()
-
   // For all other routes, check authentication
   try {
     const token = await getToken({ 
