@@ -143,11 +143,6 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials, req) {
         try {
-          console.log('[AUTH] Credentials provider called with:', {
-            hasUsername: !!credentials?.username,
-            hasPassword: !!credentials?.password
-          })
-
           if (!credentials?.username || !credentials?.password) {
             console.log('[AUTH] Missing credentials')
             return null
@@ -162,12 +157,6 @@ export const authOptions: NextAuthOptions = {
             where: isEmail 
               ? { email: username.toLowerCase() }
               : { username: username.toLowerCase() }
-          })
-
-          console.log('[AUTH] Database query result:', { 
-            found: !!user, 
-            userId: user?.id,
-            hasPassword: !!user?.password 
           })
 
           if (!user) {
