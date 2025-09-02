@@ -9,6 +9,7 @@ const publicPaths = [
   '/api/auth',
   '/api/debug-env',
   '/api/auth/test',
+  '/api/test-db',
   '/_next',
   '/images',
   '/favicon.ico',
