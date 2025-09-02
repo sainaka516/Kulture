@@ -37,6 +37,8 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+  console.log('[LAYOUT] Rendering root layout')
+  
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={cn('min-h-screen bg-background font-sans antialiased', inter.className)}>
@@ -52,7 +54,6 @@ export default function RootLayout({
               </div>
             </div>
             <Toaster />
-            <DevSessionHelper />
           </AuthProvider>
         </ThemeProvider>
       </body>
