@@ -151,16 +151,13 @@ export default function UserAuthForm({
         // Check if we have a session after login
         console.log('[AUTH] Login successful, checking session...')
         
-        // Force a session refresh
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        
         toast.success('Signed in successfully!')
         
-        // Wait a moment for the session to be established
-        await new Promise(resolve => setTimeout(resolve, 2000))
+        // Force a session refresh and wait
+        await new Promise(resolve => setTimeout(resolve, 1000))
         
-        console.log('[AUTH] Redirecting to:', callbackUrl)
-        router.push(callbackUrl)
+        // Use window.location for redirect to ensure full page reload
+        window.location.href = callbackUrl
       }
     } catch (error) {
       console.error('[AUTH] Authentication error:', error)

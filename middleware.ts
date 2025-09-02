@@ -20,6 +20,13 @@ export async function middleware(request: NextRequest) {
 
   // Always allow authentication-related paths
   if (pathname.startsWith('/api/auth')) {
+    console.log('[MIDDLEWARE] Allowing auth route:', pathname)
+    return NextResponse.next()
+  }
+
+  // Allow session check route
+  if (pathname === '/api/auth/session') {
+    console.log('[MIDDLEWARE] Allowing session check route')
     return NextResponse.next()
   }
 
