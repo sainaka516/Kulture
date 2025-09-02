@@ -22,13 +22,11 @@ export async function middleware(request: NextRequest) {
 
   // Always allow authentication-related paths
   if (pathname.startsWith('/api/auth')) {
-    console.log('[MIDDLEWARE] Allowing auth route:', pathname)
     return NextResponse.next()
   }
 
   // Allow session check route
   if (pathname === '/api/auth/session') {
-    console.log('[MIDDLEWARE] Allowing session check route')
     return NextResponse.next()
   }
 
@@ -57,20 +55,22 @@ export async function middleware(request: NextRequest) {
     return response
   }
 
-  // For all other routes, check authentication
+  // Only check authentication for page routes, not API calls or static files
+  if (pathname.includes('.') || pathname.startsWith('/_next/') || pathname.startsWith('/api/')) {
+    return NextResponse.next()
+  }
+
+  // For page routes, check authentication
   try {
     const token = await getToken({ 
       req: request,
       secret: process.env.NEXTAUTH_SECRET
     })
 
-    console.log('[MIDDLEWARE] Checking auth for:', pathname, 'Token:', !!token)
-
     // If not authenticated, redirect to sign-in page
     if (!token) {
       const signInUrl = new URL('/sign-in', request.url)
       signInUrl.searchParams.set('callbackUrl', pathname)
-      console.log('[MIDDLEWARE] Redirecting to sign-in:', signInUrl.toString())
       return NextResponse.redirect(signInUrl)
     }
   } catch (error) {
@@ -87,15 +87,8 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * Match all request paths except:
-     * 1. /api/auth/* (authentication routes)
-     * 2. /_next/* (Next.js internals)
-     * 3. /images/* (static files)
-     * 4. /favicon.ico (favicon file)
-     * 5. /manifest.json (web manifest)
-     * 6. /api/debug-env (debug route)
-     * 7. /api/auth/test (auth test route)
+     * Match only page routes, not API routes or static files
      */
-    '/((?!api/auth|_next|images|favicon.ico|manifest.json).*)',
+    '/((?!api|_next|images|favicon.ico|manifest.json).*)',
   ],
 } 
