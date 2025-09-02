@@ -55,12 +55,17 @@ export async function middleware(request: NextRequest) {
     return response
   }
 
-  // Only check authentication for page routes, not API calls or static files
-  if (pathname.includes('.') || pathname.startsWith('/_next/') || pathname.startsWith('/api/')) {
+  // Only check authentication for direct page access, not client-side navigation
+  // Check if this is a direct browser request vs client-side navigation
+  const isDirectAccess = !request.headers.get('x-nextjs-data') && 
+                        !request.headers.get('x-vercel-deployment-url') &&
+                        request.method === 'GET'
+
+  if (!isDirectAccess) {
     return NextResponse.next()
   }
 
-  // For page routes, check authentication
+  // For direct page access, check authentication
   try {
     const token = await getToken({ 
       req: request,
