@@ -55,6 +55,10 @@ export async function middleware(request: NextRequest) {
     return response
   }
 
+  // TEMPORARILY DISABLE AUTH CHECK FOR DEBUGGING
+  console.log('[MIDDLEWARE] Temporarily allowing all routes for debugging:', pathname)
+  return NextResponse.next()
+
   // For all other routes, check authentication
   try {
     const token = await getToken({ 
@@ -62,10 +66,13 @@ export async function middleware(request: NextRequest) {
       secret: process.env.NEXTAUTH_SECRET
     })
 
+    console.log('[MIDDLEWARE] Checking auth for:', pathname, 'Token:', !!token)
+
     // If not authenticated, redirect to sign-in page
     if (!token) {
       const signInUrl = new URL('/sign-in', request.url)
       signInUrl.searchParams.set('callbackUrl', pathname)
+      console.log('[MIDDLEWARE] Redirecting to sign-in:', signInUrl.toString())
       return NextResponse.redirect(signInUrl)
     }
   } catch (error) {
