@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
+import { useMemo } from 'react'
 import { cn } from '@/lib/utils'
 import {
   Home,
@@ -22,27 +23,38 @@ export default function Sidebar() {
   const pathname = usePathname()
   const { data: session } = useSession()
 
-  const navigation = [
+  console.log('[SIDEBAR] Rendering with session:', session?.user?.id)
+
+  const navigation = useMemo(() => [
     { name: 'Explore', href: '/explore', icon: Home },
     { name: 'Notifications', href: '/notifications', icon: Bell, showNotificationBadge: true },
     { name: 'Friends', href: '/friends', icon: Users },
     { name: 'Friend Requests', href: '/friends/requests', icon: UserPlus, showFriendRequestBadge: true },
     { name: 'Profile', href: session?.user ? `/user/${session.user.id}` : '/profile', icon: User },
-  ]
+  ], [session?.user?.id])
 
-  const secondaryNavigation = [
+  const secondaryNavigation = useMemo(() => [
     { name: 'Share Take', href: '/submit', icon: PlusCircle },
     { name: 'Settings', href: '/settings', icon: Settings },
-  ]
+  ], [])
 
   return (
-    <div className="fixed top-14 bottom-0 left-0 w-64 bg-card dark:bg-black border-r border-border">
+    <div className="fixed top-14 bottom-0 left-0 w-64 bg-card dark:bg-black border-r border-border z-20">
       <nav className="p-4 space-y-8">
+        {/* Test button */}
+        <button 
+          onClick={() => console.log('[SIDEBAR] Test button clicked!')}
+          className="w-full p-2 bg-blue-500 text-white rounded"
+        >
+          Test Button
+        </button>
+        
         <div className="space-y-2">
           {navigation.map((item) => (
             <Link
               key={item.name}
               href={item.href}
+              onClick={() => console.log('[SIDEBAR] Clicked:', item.name, item.href)}
               className={cn(
                 'flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors relative',
                 (pathname === item.href || (item.href === '/profile' && pathname === '/'))
