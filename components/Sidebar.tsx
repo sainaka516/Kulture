@@ -23,8 +23,6 @@ export default function Sidebar() {
   const pathname = usePathname()
   const { data: session } = useSession()
 
-  console.log('[SIDEBAR] Rendering with session:', session?.user?.id)
-
   const navigation = useMemo(() => [
     { name: 'Explore', href: '/explore', icon: Home },
     { name: 'Notifications', href: '/notifications', icon: Bell, showNotificationBadge: true },
@@ -41,20 +39,11 @@ export default function Sidebar() {
   return (
     <div className="fixed top-14 bottom-0 left-0 w-64 bg-card dark:bg-black border-r border-border z-20">
       <nav className="p-4 space-y-8">
-        {/* Test button */}
-        <button 
-          onClick={() => console.log('[SIDEBAR] Test button clicked!')}
-          className="w-full p-2 bg-blue-500 text-white rounded"
-        >
-          Test Button
-        </button>
-        
         <div className="space-y-2">
           {navigation.map((item) => (
             <Link
               key={item.name}
               href={item.href}
-              onClick={() => console.log('[SIDEBAR] Clicked:', item.name, item.href)}
               className={cn(
                 'flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors relative',
                 (pathname === item.href || (item.href === '/profile' && pathname === '/'))
