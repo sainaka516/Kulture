@@ -143,8 +143,36 @@ export default async function CommunityPage({ params }: PageProps) {
     childrenCount: community.children.length
   })
 
-  // Get all descendant community IDs using recursive CTE
+  // Get all relevant community IDs (current + descendants + parent)
   const allRelevantIds = [community.id]
+
+  // If this is a parent community, get all descendant community IDs
+  if (community.children.length > 0) {
+    // Get all descendants recursively
+    const getDescendants = async (parentId: string): Promise<string[]> => {
+      const children = await db.community.findMany({
+        where: { parentId },
+        select: { id: true }
+      })
+      
+      const descendantIds = [parentId]
+      for (const child of children) {
+        const childDescendants = await getDescendants(child.id)
+        descendantIds.push(...childDescendants)
+      }
+      return descendantIds
+    }
+    
+    const descendantIds = await getDescendants(community.id)
+    allRelevantIds.push(...descendantIds.filter(id => id !== community.id))
+  }
+
+  // If this is a child community, also include the parent community ID
+  if (community.parentId) {
+    allRelevantIds.push(community.parentId)
+  }
+
+  console.log('Relevant community IDs:', allRelevantIds)
 
   // Fetch takes from parent and all descendants
   const takes = await db.take.findMany({
@@ -220,12 +248,14 @@ export default async function CommunityPage({ params }: PageProps) {
     }
     acc[kultureName].push({
       id: take.id,
-      title: take.title
+      title: take.title,
+      communityId: take.community.id
     })
     return acc
-  }, {} as Record<string, Array<{ id: string, title: string }>>)
+  }, {} as Record<string, Array<{ id: string, title: string, communityId: string }>>)
 
   console.log('Takes found by Kulture:', takesByKulture)
+  console.log('Total takes found:', takes.length)
 
   // Get the session for user ID
   const session = await getServerSession(authOptions)

@@ -25,7 +25,7 @@ export default function ExploreClient({ takes: initialTakes }: ExploreClientProp
           takes={viewedTakes}
           currentKultureSlug={null}
           defaultView="swipe"
-          showViewSwitcher={true}
+          showViewSwitcher={false}
         />
       </TakesProvider>
     </div>

@@ -6,6 +6,8 @@ import { useToast } from '@/hooks/use-toast'
 import { useTakes } from '@/lib/contexts/TakesContext'
 import { Take, Vote } from '@/lib/types'
 import SwipeableTakeFeed from './SwipeableTakeFeed'
+import TakeCard from '@/components/TakeCard'
+import { cn } from '@/lib/utils'
 
 interface TakeFeedProps {
   takes: Take[]
@@ -26,8 +28,10 @@ export default function TakeFeed({ takes, currentKultureSlug, defaultView = 'swi
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
   const { updateTake, takes: contextTakes } = useTakes()
-  // Always use swipe view, ignore defaultView and showViewSwitcher props
-  const view = 'swipe'
+  
+  // Use view switcher if enabled, otherwise always use swipe view
+  const [view, setView] = useState<'swipe' | 'list'>(defaultView)
+  const shouldShowViewSwitcher = showViewSwitcher
 
   // Force using context takes if available, otherwise fall back to props
   const currentTakes = (contextTakes && contextTakes.length > 0) ? contextTakes : (takes || [])
@@ -132,14 +136,53 @@ export default function TakeFeed({ takes, currentKultureSlug, defaultView = 'swi
 
   return (
     <div className="space-y-4">
-      <SwipeableTakeFeed
-        initialTakes={currentTakes}
-        takes={currentTakes}
-        communitySlug={currentKultureSlug || null}
-        onVote={handleVote}
-        showDeleteButton={showDeleteButton}
-        onDelete={onDelete}
-      />
+      {shouldShowViewSwitcher && (
+        <div className="flex justify-end">
+          <div className="inline-flex rounded-lg border p-1">
+            <button
+              className={cn(
+                'inline-flex items-center justify-center rounded-md px-3 py-1.5 text-sm font-medium transition-all hover:bg-muted',
+                view === 'list' && 'bg-muted'
+              )}
+              onClick={() => setView('list')}
+            >
+              List
+            </button>
+            <button
+              className={cn(
+                'inline-flex items-center justify-center rounded-md px-3 py-1.5 text-sm font-medium transition-all hover:bg-muted',
+                view === 'swipe' && 'bg-muted'
+              )}
+              onClick={() => setView('swipe')}
+            >
+              Swipe
+            </button>
+          </div>
+        </div>
+      )}
+      {view === 'swipe' ? (
+        <SwipeableTakeFeed
+          initialTakes={currentTakes}
+          takes={currentTakes}
+          communitySlug={currentKultureSlug || null}
+          onVote={handleVote}
+          showDeleteButton={showDeleteButton}
+          onDelete={onDelete}
+        />
+      ) : (
+        <div className="grid gap-4">
+          {currentTakes.map((take: Take) => (
+            <TakeCard
+              key={take.id}
+              take={take}
+              currentKultureSlug={currentKultureSlug}
+              onVote={handleVote}
+              showDeleteButton={showDeleteButton}
+              onDelete={onDelete}
+            />
+          ))}
+        </div>
+      )}
     </div>
   )
 } 
