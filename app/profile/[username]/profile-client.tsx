@@ -180,7 +180,7 @@ export default function ProfileClient({ user }: ProfileClientProps) {
           <Card className="p-4">
             <div className="text-center">
               <div className="text-2xl font-bold">{user._count.ownedKultures}</div>
-              <div className="text-sm text-muted-foreground">Owned Kultures</div>
+              <div className="text-sm text-muted-foreground">Created Kultures</div>
             </div>
           </Card>
         </div>
@@ -213,7 +213,7 @@ export default function ProfileClient({ user }: ProfileClientProps) {
                 <div className="space-y-6">
                   {user.ownedKultures.length > 0 && (
                     <div>
-                      <h3 className="text-lg font-semibold mb-4">Owned Kultures</h3>
+                      <h3 className="text-lg font-semibold mb-4">Created Kultures</h3>
                       <KultureGrid kultures={user.ownedKultures} />
                     </div>
                   )}
@@ -321,7 +321,7 @@ export default function ProfileClient({ user }: ProfileClientProps) {
                   <span className="font-medium">{user.joinedKultures.length}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Owned Kultures</span>
+                  <span className="text-sm text-muted-foreground">Created Kultures</span>
                   <span className="font-medium">{user._count.ownedKultures}</span>
                 </div>
               </div>

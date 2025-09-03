@@ -245,13 +245,16 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
         createdAt: comment.createdAt.toISOString(),
         take: comment.take!
       })),
-    friends: [...user.friends.map(f => f.friend), ...user.friendsOf.map(f => f.user)],
+    friends: Array.from(new Set([...user.friends.map(f => f.friend.id), ...user.friendsOf.map(f => f.user.id)])).map(id => {
+      const friend = user.friends.find(f => f.friend.id === id)?.friend || user.friendsOf.find(f => f.user.id === id)?.user!
+      return friend
+    }),
     _count: {
       takes: user._count.takes,
       comments: user._count.comments,
       upvotes: user.votes.filter(v => v.type === 'UP').length,
       downvotes: user.votes.filter(v => v.type === 'DOWN').length,
-      friends: user._count.friends + user._count.friendsOf,
+      friends: Array.from(new Set([...user.friends.map(f => f.friend.id), ...user.friendsOf.map(f => f.user.id)])).length,
       ownedKultures: user._count.ownedCommunities
     },
     createdAt: user.createdAt.toISOString()

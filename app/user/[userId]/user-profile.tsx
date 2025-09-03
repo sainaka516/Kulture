@@ -163,7 +163,7 @@ function UserProfileContent({ currentUser, session, showEmail }: UserProfileProp
           <Card className="p-4">
             <div className="text-center">
               <div className="text-2xl font-bold">{currentUser._count.ownedKultures}</div>
-              <div className="text-sm text-muted-foreground">Owned Kultures</div>
+              <div className="text-sm text-muted-foreground">Created Kultures</div>
             </div>
           </Card>
         </div>
@@ -223,7 +223,7 @@ function UserProfileContent({ currentUser, session, showEmail }: UserProfileProp
                 <div className="space-y-6">
                   {currentUser.ownedKultures.length > 0 && (
                     <div>
-                      <h3 className="text-lg font-semibold mb-4">Owned Kultures</h3>
+                      <h3 className="text-lg font-semibold mb-4">Created Kultures</h3>
                       <KultureGrid kultures={currentUser.ownedKultures} />
                     </div>
                   )}
@@ -331,7 +331,7 @@ function UserProfileContent({ currentUser, session, showEmail }: UserProfileProp
                   <span className="font-medium">{currentUser.joinedKultures.length}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Owned Kultures</span>
+                  <span className="text-sm text-muted-foreground">Created Kultures</span>
                   <span className="font-medium">{currentUser._count.ownedKultures}</span>
                 </div>
               </div>
