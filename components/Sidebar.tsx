@@ -28,8 +28,8 @@ export default function Sidebar() {
     { name: 'Notifications', href: '/notifications', icon: Bell, showNotificationBadge: true },
     { name: 'Friends', href: '/friends', icon: Users },
     { name: 'Friend Requests', href: '/friends/requests', icon: UserPlus, showFriendRequestBadge: true },
-    { name: 'Profile', href: session?.user ? `/user/${session.user.id}` : '/profile', icon: User },
-  ], [session?.user?.id])
+    { name: 'Profile', href: session?.user?.username ? `/profile/${session.user.username}` : '/profile', icon: User },
+  ], [session?.user?.username])
 
   const secondaryNavigation = useMemo(() => [
     { name: 'Share Take', href: '/submit', icon: PlusCircle },

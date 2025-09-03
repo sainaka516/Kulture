@@ -15,6 +15,7 @@ import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import KultureGrid from '@/components/KultureGrid'
 import FriendRequestButton from '@/components/FriendRequestButton'
+import UsernameEditor from '@/components/UsernameEditor'
 
 interface ProfileClientProps {
   user: {
@@ -95,6 +96,7 @@ export default function ProfileClient({ user }: ProfileClientProps) {
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
   const [takes, setTakes] = useState(user.takes)
+  const [currentUsername, setCurrentUsername] = useState(user.username)
 
   // Check if this is the current user's profile
   const isOwnProfile = session?.user?.id === user.id
@@ -109,6 +111,11 @@ export default function ProfileClient({ user }: ProfileClientProps) {
   // Handle take deletion
   const handleDeleteTake = (takeId: string) => {
     setTakes(prevTakes => prevTakes.filter(take => take.id !== takeId))
+  }
+
+  // Handle username update
+  const handleUsernameUpdate = (newUsername: string) => {
+    setCurrentUsername(newUsername)
   }
 
   return (
@@ -130,7 +137,14 @@ export default function ProfileClient({ user }: ProfileClientProps) {
                 </div>
               )}
             </div>
-            <p className="text-muted-foreground">@{user.username}</p>
+            {isOwnProfile ? (
+              <UsernameEditor 
+                currentUsername={currentUsername} 
+                onUsernameUpdated={handleUsernameUpdate}
+              />
+            ) : (
+              <p className="text-muted-foreground">@{currentUsername}</p>
+            )}
             <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
               <Calendar className="h-4 w-4" />
               <span>Joined {formatDate(user.createdAt)}</span>
