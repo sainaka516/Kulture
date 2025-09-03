@@ -1,16 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { useSearchParams, usePathname } from 'next/navigation'
-import Link from 'next/link'
 import { useSession } from 'next-auth/react'
-import { Loader2 } from 'lucide-react'
-import { cn } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
 import { useTakes } from '@/lib/contexts/TakesContext'
 import { Take, Vote } from '@/lib/types'
 import SwipeableTakeFeed from './SwipeableTakeFeed'
-import TakeCard from '@/components/TakeCard'
 
 interface TakeFeedProps {
   takes: Take[]
@@ -26,12 +21,13 @@ interface UpdatedTake extends Take {
   votes: Vote[]
 }
 
-export default function TakeFeed({ takes, currentKultureSlug, defaultView = 'list', showViewSwitcher = false, showDeleteButton = false, onDelete, onVote: externalOnVote }: TakeFeedProps) {
+export default function TakeFeed({ takes, currentKultureSlug, defaultView = 'swipe', showViewSwitcher = false, showDeleteButton = false, onDelete, onVote: externalOnVote }: TakeFeedProps) {
   const { data: session } = useSession()
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
   const { updateTake, takes: contextTakes } = useTakes()
-  const [view, setView] = useState<'swipe' | 'list'>(defaultView)
+  // Always use swipe view, ignore defaultView and showViewSwitcher props
+  const view = 'swipe'
 
   // Force using context takes if available, otherwise fall back to props
   const currentTakes = (contextTakes && contextTakes.length > 0) ? contextTakes : (takes || [])
@@ -136,53 +132,14 @@ export default function TakeFeed({ takes, currentKultureSlug, defaultView = 'lis
 
   return (
     <div className="space-y-4">
-      {showViewSwitcher && (
-        <div className="flex justify-end">
-          <div className="inline-flex rounded-lg border p-1">
-            <button
-              className={cn(
-                'inline-flex items-center justify-center rounded-md px-3 py-1.5 text-sm font-medium transition-all hover:bg-muted',
-                view === 'list' && 'bg-muted'
-              )}
-              onClick={() => setView('list')}
-            >
-              List
-            </button>
-            <button
-              className={cn(
-                'inline-flex items-center justify-center rounded-md px-3 py-1.5 text-sm font-medium transition-all hover:bg-muted',
-                view === 'swipe' && 'bg-muted'
-              )}
-              onClick={() => setView('swipe')}
-            >
-              Swipe
-            </button>
-          </div>
-        </div>
-      )}
-      {view === 'swipe' ? (
-        <SwipeableTakeFeed
-          initialTakes={currentTakes}
-          takes={currentTakes}
-          communitySlug={currentKultureSlug || null}
-          onVote={handleVote}
-          showDeleteButton={showDeleteButton}
-          onDelete={onDelete}
-        />
-      ) : (
-        <div className="grid gap-4">
-          {currentTakes.map((take: Take) => (
-            <TakeCard
-              key={take.id}
-              take={take}
-              currentKultureSlug={currentKultureSlug}
-              onVote={handleVote}
-              showDeleteButton={showDeleteButton}
-              onDelete={onDelete}
-            />
-          ))}
-        </div>
-      )}
+      <SwipeableTakeFeed
+        initialTakes={currentTakes}
+        takes={currentTakes}
+        communitySlug={currentKultureSlug || null}
+        onVote={handleVote}
+        showDeleteButton={showDeleteButton}
+        onDelete={onDelete}
+      />
     </div>
   )
 } 

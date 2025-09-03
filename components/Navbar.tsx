@@ -126,18 +126,6 @@ export default function Navbar() {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   className="cursor-pointer"
-                  onSelect={(event) => {
-                    event.preventDefault()
-                    signOut({
-                      callbackUrl: `${window.location.origin}/sign-in`,
-                    })
-                  }}
-                >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Sign out
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="cursor-pointer"
                   onSelect={async (event) => {
                     event.preventDefault()
                     clearAllStorage()
@@ -145,7 +133,7 @@ export default function Navbar() {
                   }}
                 >
                   <Users className="mr-2 h-4 w-4" />
-                  Switch Account (Clear All)
+                  Sign Out
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
