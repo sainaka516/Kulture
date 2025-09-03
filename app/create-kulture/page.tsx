@@ -66,7 +66,6 @@ export default function CreateKulture() {
 
     const formData = new FormData(event.currentTarget)
     const name = formData.get('name') as string
-    const title = formData.get('title') as string
     const description = formData.get('description') as string
     const rules = formData.get('rules') as string
     const formParentId = formData.get('parentId') as string
@@ -84,7 +83,7 @@ export default function CreateKulture() {
       body: JSON.stringify({
         name,
         slug,
-        title,
+        title: name, // Use name as title
         description,
         rules,
         parentId,
@@ -147,23 +146,13 @@ export default function CreateKulture() {
             id="name"
             name="name"
             required
-            placeholder="e.g., sports, fashion, tech"
+            placeholder="e.g., Sports Discussion"
             pattern="^[a-zA-Z0-9_-]+$"
             title="Only letters, numbers, underscores, and hyphens are allowed"
           />
           <p className="text-xs text-muted-foreground">
-            This will be used in the URL: kulture.com/k/your-name
+            This will be used in the URL: kulture.com/k/your-name and displayed as the kulture title
           </p>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="title">Display Title</Label>
-          <Input
-            id="title"
-            name="title"
-            required
-            placeholder="e.g., Sports Discussion"
-          />
         </div>
 
         <div className="space-y-2">

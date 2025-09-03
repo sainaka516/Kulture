@@ -110,8 +110,8 @@ export async function POST(req: Request) {
     
     const { name, title, description, rules, parentId } = body
 
-    if (!name || !title) {
-      return new NextResponse('Name and title are required', { status: 400 })
+    if (!name) {
+      return new NextResponse('Name is required', { status: 400 })
     }
 
     // Generate a URL-friendly slug from the name
@@ -141,7 +141,7 @@ export async function POST(req: Request) {
     const communityData: any = {
       name,
       slug,
-      title,
+      title: title || name, // Use name as title if title is not provided
       description: description || null,
       rules: rules || null,
       owner: {
