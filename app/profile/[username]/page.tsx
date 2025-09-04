@@ -77,6 +77,28 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
                       takes: true,
                       children: true
                     }
+                  },
+                  parent: {
+                    include: {
+                      _count: {
+                        select: {
+                          members: true,
+                          takes: true,
+                          children: true
+                        }
+                      },
+                      parent: {
+                        include: {
+                          _count: {
+                            select: {
+                              members: true,
+                              takes: true,
+                              children: true
+                            }
+                          }
+                        }
+                      }
+                    }
                   }
                 }
               }
